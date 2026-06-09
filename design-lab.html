@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Design Lab · Goals</title>
+  <meta name="description" content="Live design lab for the Goals app — tweak accent, background, glass, fonts, radius, motion and button shape, preview on the real components, then copy a drop-in config." />
+  <link rel="stylesheet" href="styles.css" />
+  <link id="font-link" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Newsreader:ital,wght@1,400;1,500;0,400&family=JetBrains+Mono:wght@400;500;700&display=swap" />
+  <style>
+    :root { color-scheme: dark; }
+    body.lab { font-family: 'Inter', system-ui, sans-serif; background: #06090f; color: #e9eefb; margin: 0; min-height: 100dvh; }
+    .lab-shell { display: grid; grid-template-columns: 340px 1fr; min-height: 100dvh; }
+
+    .rail { background: #0a0e16; border-right: 1px solid #18202f; padding: 18px; overflow-y: auto; height: 100dvh; position: sticky; top: 0; }
+    .rail h1 { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; letter-spacing: .02em; display: flex; align-items: center; gap: 9px; margin: 0 0 3px; }
+    .rail h1 .dot { width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle at 32% 28%, #c8fbe6, #2dd4bf 46%, #6366f1 105%); box-shadow: 0 0 14px rgba(45,212,191,.6); }
+    .rail .tag { font-size: 12px; color: #8493ad; margin-bottom: 18px; }
+    .group { margin-bottom: 20px; }
+    .glabel { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #7a89a6; font-weight: 700; margin-bottom: 9px; display: block; }
+    .presets { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .preset { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 10px; cursor: pointer; border: 1px solid #1d2738; background: #0e1420; color: #d7e1f5; font-size: 12.5px; font-weight: 600; text-align: left; transition: border-color .15s, background .15s, transform .12s; }
+    .preset:hover { border-color: #34466b; transform: translateY(-1px); }
+    .preset.active { border-color: #2dd4bf; box-shadow: 0 0 0 1px #2dd4bf inset; }
+    .preset .sw { width: 26px; height: 18px; border-radius: 6px; flex-shrink: 0; border: 1px solid rgba(255,255,255,.15); }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    .row label { font-size: 13px; color: #c2cee6; font-weight: 500; }
+    .row .val { font-size: 12px; color: #8493ad; font-family: 'JetBrains Mono', monospace; }
+    input[type="color"] { -webkit-appearance: none; appearance: none; width: 38px; height: 28px; border: 1px solid #283650; border-radius: 8px; background: none; cursor: pointer; padding: 0; }
+    input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; } input[type="color"]::-webkit-color-swatch { border: none; border-radius: 6px; }
+    input[type="range"] { width: 150px; accent-color: #2dd4bf; cursor: pointer; }
+    select { background: #0e1420; color: #d7e1f5; border: 1px solid #283650; border-radius: 9px; padding: 7px 9px; font-size: 13px; font-family: inherit; cursor: pointer; width: 160px; }
+    .seg-wrap { display: inline-flex; gap: 4px; background: #090d15; padding: 3px; border-radius: 10px; border: 1px solid #1d2738; }
+    .seg { border: none; padding: 6px 11px; border-radius: 7px; background: transparent; color: #aebbd6; font-weight: 600; font-family: inherit; font-size: 12.5px; cursor: pointer; }
+    .seg.on { background: linear-gradient(135deg,#7defc0,#2dd4bf); color: #04130d; }
+    .actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 6px; }
+    .lab-btn { border: 1px solid #283650; background: #0e1420; color: #e9eefb; padding: 11px 14px; border-radius: 11px; font-family: inherit; font-weight: 700; font-size: 13.5px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 7px; transition: filter .15s, background .15s, border-color .15s; }
+    .lab-btn.primary { background: linear-gradient(135deg,#7defc0,#2dd4bf); border-color: transparent; color: #04130d; }
+    .lab-btn.primary:hover { filter: brightness(1.07); } .lab-btn.ghost:hover { border-color: #34466b; background: #131a28; }
+    .lab-btn.copied { background: #16a34a; border-color: transparent; color: #fff; }
+    .share { margin-top: 20px; padding: 14px; border: 1px solid #18202f; border-radius: 13px; background: #090d15; }
+    .linkbox { display: flex; gap: 6px; margin-bottom: 12px; }
+    .linkbox input { flex: 1; background: #06090f; border: 1px solid #283650; color: #b9c6e0; border-radius: 8px; padding: 8px 10px; font-size: 12px; font-family: 'JetBrains Mono', monospace; min-width: 0; }
+    .mini { border: 1px solid #283650; background: #0e1420; color: #cdd8ef; border-radius: 8px; padding: 0 11px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; font-family: inherit; }
+    .mini.copied { background: #16a34a; color: #fff; border-color: transparent; }
+    .share p.hint { font-size: 11.5px; color: #7a89a6; line-height: 1.5; margin: 0; }
+
+    .stage { padding: 22px; overflow: auto; height: 100dvh; }
+    .stage-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .stage-bar .t { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; }
+    .stage-bar .pill2 { font-size: 11px; color: #8493ad; border: 1px solid #1d2738; border-radius: 999px; padding: 3px 10px; }
+    .stage-bar .grow { flex: 1; }
+
+    /* live preview — real components, tokens injected at runtime */
+    .preview { border-radius: 22px; overflow: hidden; border: 1px solid #18202f; box-shadow: 0 24px 70px rgba(0,0,0,.55); padding: 26px; display: flex; flex-direction: column; gap: 20px; position: relative; }
+    .preview .topbar { position: static; }
+
+    @media (max-width: 920px) { .lab-shell { grid-template-columns: 1fr; } .rail { height: auto; position: static; } .stage { height: auto; } }
+  </style>
+  <style id="preview-css"></style>
+</head>
+<body class="lab">
+  <div class="lab-shell">
+    <aside class="rail">
+      <h1><span class="dot"></span> Design Lab</h1>
+      <div class="tag">Tweak → preview live → Copy config → paste to Claude.</div>
+
+      <div class="group">
+        <span class="glabel">Presets</span>
+        <div class="presets" id="presets"></div>
+      </div>
+
+      <div class="group">
+        <span class="glabel">Accent gradient</span>
+        <div class="row"><label>From</label><input type="color" id="accA" value="#7defc0" /></div>
+        <div class="row"><label>To</label><input type="color" id="accB" value="#22d3ee" /></div>
+      </div>
+
+      <div class="group">
+        <span class="glabel">Background</span>
+        <div class="row"><label>Base</label><input type="color" id="bg" value="#070b14" /></div>
+      </div>
+
+      <div class="group">
+        <span class="glabel">Glass</span>
+        <div class="row"><label for="blur">Blur</label><span class="val" id="blurVal">20px</span></div>
+        <input type="range" id="blur" min="0" max="34" value="20" style="width:100%; margin-bottom:12px" />
+        <div class="row"><label for="op">Frost opacity</label><span class="val" id="opVal">7%</span></div>
+        <input type="range" id="op" min="2" max="18" value="7" style="width:100%" />
+      </div>
+
+      <div class="group">
+        <span class="glabel">Shape</span>
+        <div class="row"><label for="radius">Corner radius</label><span class="val" id="radiusVal">20px</span></div>
+        <input type="range" id="radius" min="0" max="28" value="20" style="width:100%; margin-bottom:12px" />
+        <div class="row"><label>Buttons</label>
+          <div class="seg-wrap" id="btnShape">
+            <button class="seg on" data-shape="pill">Pill</button>
+            <button class="seg" data-shape="round">Round</button>
+            <button class="seg" data-shape="sharp">Sharp</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <span class="glabel">Typography</span>
+        <div class="row"><label for="fontSel">Pairing</label><select id="fontSel"></select></div>
+      </div>
+
+      <div class="group">
+        <span class="glabel">Motion</span>
+        <div class="seg-wrap" id="motionSeg" style="width:100%; justify-content:space-between">
+          <button class="seg on" data-motion="smooth">Smooth</button>
+          <button class="seg" data-motion="bouncy">Bouncy</button>
+          <button class="seg" data-motion="minimal">Minimal</button>
+          <button class="seg" data-motion="none">None</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="actions">
+          <button class="lab-btn primary" id="copyBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy config</button>
+          <button class="lab-btn ghost" id="resetBtn">Reset</button>
+        </div>
+      </div>
+
+      <div class="share">
+        <span class="glabel">Share this lab</span>
+        <div class="linkbox"><input id="shareLink" readonly value="loading…" /><button class="mini" id="copyLink">Copy</button></div>
+        <span class="glabel">Build one for your own app</span>
+        <div class="linkbox"><button class="mini" id="copyPrompt" style="flex:1; padding:8px">Copy the reusable prompt</button></div>
+        <p class="hint">Hand the prompt to Claude inside any CSS-variable app and it'll generate a lab like this.</p>
+      </div>
+    </aside>
+
+    <main class="stage">
+      <div class="stage-bar">
+        <span class="t">Live preview</span><span class="pill2" id="presetName">Glass</span>
+        <span class="grow"></span><span class="pill2">Real components, themed live</span>
+      </div>
+
+      <div class="preview" id="preview">
+        <!-- greeter -->
+        <div class="topbar">
+          <button class="greeter" type="button">
+            <span class="avatar-orb"></span>
+            <span class="greeter__text"><span class="eyebrow">Personal OS</span><span class="greeter__hi">Good evening, Luke</span><span class="greeter__sub">Ask me about your goals →</span></span>
+          </button>
+        </div>
+        <!-- chat bubbles -->
+        <div class="chat" style="animation:none">
+          <div class="chat__log">
+            <div class="bubble bubble--ai" style="animation:none">Your nearest goal is <strong>Finish the slide deck</strong> — due tonight (38m left).</div>
+            <div class="bubble bubble--you" style="animation:none">How can I hit it?</div>
+          </div>
+          <div class="chat__chips"><span class="chip">What's my nearest goal?</span><span class="chip">Summarize my day</span></div>
+        </div>
+        <!-- hero -->
+        <div class="hero" style="animation:none">
+          <div class="hero__eyebrow"><span class="hero__pip"></span> Coming up</div>
+          <div class="hero__title">Finish the slide deck</div>
+          <div class="hero__meta">Short-term · due tonight · <span class="hero__countdown">38m left</span></div>
+          <div class="timer"><div class="timer__track"><div class="timer__fill" style="width:62%"></div></div><div class="timer__labels"><span>started</span><span>due 8:00 PM</span></div></div>
+        </div>
+        <!-- tabs -->
+        <div class="tabs">
+          <button class="tab is-active">Long-term<span class="tab__count">2</span></button>
+          <button class="tab">Short-term<span class="tab__count">3</span></button>
+          <button class="tab">Daily<span class="tab__count">1</span></button>
+        </div>
+        <!-- a goal item + buttons -->
+        <div class="item" style="animation:none">
+          <div class="item__top">
+            <div class="item__title">Launch the new product</div>
+            <div class="item__actions"><span class="badge badge--accent">45d left</span></div>
+          </div>
+          <div class="timer"><div class="timer__track"><div class="timer__fill" style="width:24%"></div></div></div>
+        </div>
+        <div style="display:flex; gap:12px"><button class="btn btn--primary">Add goal</button><button class="btn btn--ghost">Cancel</button></div>
+      </div>
+    </main>
+  </div>
+
+  <textarea id="clip" style="position:fixed;left:-9999px;top:0" aria-hidden="true"></textarea>
+
+  <script>
+  (function () {
+    "use strict";
+    const FONTS = {
+      glass:   { name: "Inter / Newsreader", sans: "'Inter', sans-serif", serif: "'Newsreader', Georgia, serif", mono: "'JetBrains Mono', monospace", imp: "Inter:wght@400;500;600;700;800&family=Newsreader:ital,wght@1,400;1,500;0,400&family=JetBrains+Mono:wght@400;500;700" },
+      sora:    { name: "Inter / Sora", sans: "'Inter', sans-serif", serif: "'Sora', sans-serif", mono: "'JetBrains Mono', monospace", imp: "Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&family=JetBrains+Mono:wght@400;500;700" },
+      space:   { name: "Inter / Space Grotesk", sans: "'Inter', sans-serif", serif: "'Space Grotesk', sans-serif", mono: "'Space Grotesk', monospace", imp: "Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700" },
+      manrope: { name: "Manrope", sans: "'Manrope', sans-serif", serif: "'Manrope', sans-serif", mono: "'JetBrains Mono', monospace", imp: "Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700" },
+      playfair:{ name: "Inter / Playfair", sans: "'Inter', sans-serif", serif: "'Playfair Display', serif", mono: "'JetBrains Mono', monospace", imp: "Inter:wght@400;500;600&family=Playfair+Display:ital,wght@1,500;0,600&family=JetBrains+Mono:wght@400;500;700" },
+    };
+    const PRESETS = {
+      glass:   { label: "Glass",   accA: "#7defc0", accB: "#22d3ee", bg: "#070b14", blur: 20, op: 7,  radius: 20, shape: "pill",  font: "glass",   motion: "smooth" },
+      aurora:  { label: "Aurora",  accA: "#6EE7B7", accB: "#818cf8", bg: "#080d1a", blur: 24, op: 8,  radius: 22, shape: "pill",  font: "sora",    motion: "bouncy" },
+      sunset:  { label: "Sunset",  accA: "#fbbf24", accB: "#fb7185", bg: "#160d18", blur: 18, op: 8,  radius: 18, shape: "round", font: "playfair",motion: "smooth" },
+      indigo:  { label: "Indigo",  accA: "#a5b4fc", accB: "#6366f1", bg: "#0a0a16", blur: 22, op: 6,  radius: 16, shape: "round", font: "manrope", motion: "smooth" },
+      cyber:   { label: "Cyber",   accA: "#22d3ee", accB: "#a855f7", bg: "#05060f", blur: 26, op: 9,  radius: 12, shape: "sharp", font: "space",   motion: "minimal" },
+      clean:   { label: "Clean",   accA: "#34d399", accB: "#10b981", bg: "#0b1016", blur: 14, op: 5,  radius: 14, shape: "round", font: "manrope", motion: "minimal" },
+    };
+    const MOTION = {
+      smooth:  { dur: "200ms", ease: "cubic-bezier(.2,.8,.2,1)", lift: "-2px" },
+      bouncy:  { dur: "260ms", ease: "cubic-bezier(.34,1.56,.64,1)", lift: "-3px" },
+      minimal: { dur: "120ms", ease: "cubic-bezier(.2,.8,.2,1)", lift: "-1px" },
+      none:    { dur: "1ms",   ease: "linear", lift: "0px" },
+    };
+    const SHAPE = { pill: "999px", round: "14px", sharp: "4px" };
+
+    let active = "glass";
+    const state = Object.assign({}, PRESETS.glass);
+    const $ = (id) => document.getElementById(id);
+    const css = $("preview-css"), fontLink = $("font-link");
+
+    // build presets
+    const pw = $("presets");
+    Object.keys(PRESETS).forEach((k) => {
+      const p = PRESETS[k];
+      const b = document.createElement("button");
+      b.className = "preset" + (k === active ? " active" : ""); b.dataset.key = k;
+      b.innerHTML = '<span class="sw" style="background:linear-gradient(135deg,' + p.accA + ',' + p.accB + ')"></span>' + p.label;
+      b.addEventListener("click", () => applyPreset(k));
+      pw.appendChild(b);
+    });
+    // build fonts
+    const fontSel = $("fontSel");
+    Object.keys(FONTS).forEach((k) => { const o = document.createElement("option"); o.value = k; o.textContent = FONTS[k].name; fontSel.appendChild(o); });
+
+    // wire controls
+    $("accA").addEventListener("input", (e) => { state.accA = e.target.value; custom(); render(); });
+    $("accB").addEventListener("input", (e) => { state.accB = e.target.value; custom(); render(); });
+    $("bg").addEventListener("input", (e) => { state.bg = e.target.value; custom(); render(); });
+    $("blur").addEventListener("input", (e) => { state.blur = +e.target.value; $("blurVal").textContent = state.blur + "px"; custom(); render(); });
+    $("op").addEventListener("input", (e) => { state.op = +e.target.value; $("opVal").textContent = state.op + "%"; custom(); render(); });
+    $("radius").addEventListener("input", (e) => { state.radius = +e.target.value; $("radiusVal").textContent = state.radius + "px"; custom(); render(); });
+    fontSel.addEventListener("change", (e) => { state.font = e.target.value; custom(); render(); });
+    $("btnShape").addEventListener("click", (e) => { const b = e.target.closest(".seg"); if (!b) return; state.shape = b.dataset.shape; custom(); sync(); render(); });
+    $("motionSeg").addEventListener("click", (e) => { const b = e.target.closest(".seg"); if (!b) return; state.motion = b.dataset.motion; custom(); sync(); render(); });
+
+    function applyPreset(k) { active = k; Object.assign(state, PRESETS[k]); document.querySelectorAll(".preset").forEach((b) => b.classList.toggle("active", b.dataset.key === k)); sync(); render(); }
+    function custom() { active = "custom"; document.querySelectorAll(".preset").forEach((b) => b.classList.remove("active")); }
+    function sync() {
+      $("accA").value = state.accA; $("accB").value = state.accB; $("bg").value = state.bg;
+      $("blur").value = state.blur; $("blurVal").textContent = state.blur + "px";
+      $("op").value = state.op; $("opVal").textContent = state.op + "%";
+      $("radius").value = state.radius; $("radiusVal").textContent = state.radius + "px";
+      fontSel.value = state.font;
+      document.querySelectorAll("#btnShape .seg").forEach((b) => b.classList.toggle("on", b.dataset.shape === state.shape));
+      document.querySelectorAll("#motionSeg .seg").forEach((b) => b.classList.toggle("on", b.dataset.motion === state.motion));
+    }
+
+    function vars(s) {
+      const op1 = (s.op / 100).toFixed(3), op2 = (s.op / 100 * 0.4).toFixed(3);
+      const glow = "color-mix(in srgb, " + s.accB + " 45%, transparent)";
+      return (
+        "  --accent: " + s.accA + ";\n" +
+        "  --accent-2: " + s.accB + ";\n" +
+        "  --accent-3: " + s.accB + ";\n" +
+        "  --accent-grad: linear-gradient(135deg, " + s.accA + " 0%, " + s.accB + " 100%);\n" +
+        "  --accent-glow: " + glow + ";\n" +
+        "  --bg: " + s.bg + ";\n" +
+        "  --glass: linear-gradient(160deg, rgba(255,255,255," + op1 + "), rgba(255,255,255," + op2 + "));\n" +
+        "  --glass-strong: linear-gradient(160deg, rgba(255,255,255," + (s.op / 100 * 1.5).toFixed(3) + "), rgba(255,255,255," + (s.op / 100 * 0.6).toFixed(3) + "));\n" +
+        "  --blur: blur(" + s.blur + "px) saturate(150%);\n" +
+        "  --radius-sm: " + Math.max(2, s.radius - 10) + "px;\n" +
+        "  --radius-md: " + Math.max(4, s.radius - 6) + "px;\n" +
+        "  --radius-lg: " + s.radius + "px;\n" +
+        "  --font-sans: " + FONTS[s.font].sans + ";\n" +
+        "  --font-serif: " + FONTS[s.font].serif + ";\n" +
+        "  --font-mono: " + FONTS[s.font].mono + ";\n" +
+        "  --duration: " + MOTION[s.motion].dur + ";\n" +
+        "  --ease: " + MOTION[s.motion].ease + ";\n"
+      );
+    }
+    function genCSS(s, scoped) {
+      const root = scoped ? ".preview" : ":root";
+      const sc = scoped ? ".preview " : "";
+      const bgSel = scoped ? ".preview" : "body";
+      let out = root + " {\n" + vars(s) + "}\n";
+      out += bgSel + " { background: " + s.bg + "; }\n";
+      out += sc + ".btn { border-radius: " + SHAPE[s.shape] + "; }\n";
+      const m = MOTION[s.motion];
+      out += sc + ".btn:hover, " + sc + ".tab:hover, " + sc + ".item:hover { transform: translateY(" + m.lift + "); }\n";
+      return out;
+    }
+
+    function render() {
+      css.textContent = genCSS(state, true);
+      const f = FONTS[state.font];
+      const href = "https://fonts.googleapis.com/css2?family=" + f.imp + "&display=swap";
+      if (fontLink.getAttribute("href") !== href) fontLink.setAttribute("href", href);
+      // size the preview timer fills (positional gradient)
+      document.querySelectorAll(".preview .timer__track").forEach((tr) => { const fill = tr.querySelector(".timer__fill"); if (fill) fill.style.setProperty("--timer-w", tr.clientWidth + "px"); });
+      $("presetName").textContent = active === "custom" ? "Custom" : PRESETS[active].label;
+    }
+
+    function exportConfig() {
+      const f = FONTS[state.font];
+      const head =
+"/* ╔══════════════════════════════════════════════════════╗\n" +
+"   ║  GOALS APP · DESIGN CONFIG  (design-lab v1)           ║\n" +
+"   ╚══════════════════════════════════════════════════════╝\n" +
+"   APPLY — paste this whole block to Claude and say:\n" +
+"     \"Apply this Goals design config to styles.css\"\n" +
+"   Claude: append below to the END of styles.css, and update\n" +
+"   the @import font line shown here.\n" +
+"   Preset: " + (active === "custom" ? "Custom" : PRESETS[active].label) +
+"  ·  Font: " + f.name + "  ·  Radius: " + state.radius + "px  ·  Buttons: " + state.shape + "  ·  Motion: " + state.motion + "\n" +
+"*/\n\n@import url('https://fonts.googleapis.com/css2?family=" + f.imp + "&display=swap');\n\n";
+      return head + genCSS(state, false) + "\n/* === END GOALS DESIGN CONFIG === */\n";
+    }
+    function copyText(text, btn, label) {
+      const old = btn.textContent;
+      const ok = () => { btn.classList.add("copied"); btn.textContent = label; setTimeout(() => { btn.classList.remove("copied"); btn.textContent = old; }, 1600); };
+      (navigator.clipboard && navigator.clipboard.writeText) ? navigator.clipboard.writeText(text).then(ok).catch(() => fb(text, ok)) : fb(text, ok);
+    }
+    function fb(text, ok) { const ta = $("clip"); ta.value = text; ta.select(); try { document.execCommand("copy"); ok(); } catch (e) { alert("Copy failed"); } }
+
+    $("copyBtn").addEventListener("click", function () { const b = this, old = b.innerHTML; const ok = () => { b.classList.add("copied"); b.innerHTML = "✓ Copied config"; setTimeout(() => { b.classList.remove("copied"); b.innerHTML = old; }, 1800); }; (navigator.clipboard ? navigator.clipboard.writeText(exportConfig()).then(ok).catch(() => fb(exportConfig(), ok)) : fb(exportConfig(), ok)); });
+    $("resetBtn").addEventListener("click", () => applyPreset("glass"));
+
+    const link = location.origin + location.pathname;
+    $("shareLink").value = link;
+    $("copyLink").addEventListener("click", function () { copyText(link, this, "Copied"); });
+    const PROMPT = "Build me a \"Design Lab\" page (design-lab.html) for this app, like the Goals one. Read my stylesheet, find every CSS custom property (accent, background, glass/blur, radius, fonts, motion) and the component classes, then make a single self-contained HTML page that: links my real stylesheet and renders a live preview of my real components; drives the preview by writing CSS variables onto a scoped \".preview\" selector so nothing else changes; gives controls for an accent gradient (two colors), background, glass blur + frost opacity, corner radius, button shape (pill/round/sharp), font pairing (hot-swapping Google Fonts) and a motion preset (smooth/bouncy/minimal/none); includes one-click presets; and has a \"Copy config\" button that emits a clearly-marked CSS block (header comment + @import + :root overrides + button-shape + motion rules) to append to the end of my stylesheet. Show its own deploy link via location.origin. Keep the editor chrome unthemed.";
+    $("copyPrompt").addEventListener("click", function () { copyText(PROMPT, this, "Copied prompt"); });
+
+    window.addEventListener("resize", render);
+    sync(); render();
+  })();
+  </script>
+</body>
+</html>

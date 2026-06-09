@@ -11,14 +11,28 @@
 <body>
   <div class="wrap">
 
-    <!-- ============ TOPBAR ============ -->
+    <!-- ============ TOPBAR / AI GREETER ============ -->
     <header class="topbar">
-      <div class="brand">
-        <span class="eyebrow">Personal OS</span>
-        <h1 class="wordmark">Goals &amp; Schedule</h1>
-      </div>
+      <button class="greeter" id="greeter" type="button" aria-expanded="false" aria-controls="chat">
+        <span class="avatar-orb" aria-hidden="true"></span>
+        <span class="greeter__text">
+          <span class="eyebrow">Personal OS</span>
+          <span class="greeter__hi" id="greet">Hello</span>
+          <span class="greeter__sub" id="greeter-sub">Ask me about your goals →</span>
+        </span>
+      </button>
       <div class="clock" id="clock" aria-live="off">—<span class="tz" id="tz"></span></div>
     </header>
+
+    <!-- ============ CHAT (expands from the greeter) ============ -->
+    <section class="chat" id="chat" hidden aria-label="Assistant">
+      <div class="chat__log" id="chat-log"></div>
+      <div class="chat__chips" id="chat-chips"></div>
+      <form class="chat__form" id="chat-form" autocomplete="off">
+        <input class="chat__input" id="chat-input" placeholder="Ask about your goals…" aria-label="Message" />
+        <button class="btn btn--primary" type="submit">Send</button>
+      </form>
+    </section>
 
     <!-- ============ HERO: coming-up deadline ============ -->
     <section class="hero" id="hero" aria-label="Next deadline">

@@ -280,6 +280,119 @@ $("surprise").addEventListener("click", () => {
   if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
 });
 
+/* ============================================================
+   AI GREETER + CHAT
+   UI is fully built; the "brain" is a local placeholder (localBrain)
+   that already reads your real goals/ideas. To switch to real Claude
+   later, replace localBrain() with a call to a Vercel serverless
+   function (/api/chat) that holds your ANTHROPIC_API_KEY server-side.
+   ============================================================ */
+const USER_NAME = "Luke";
+function greetingWord() { const h = new Date().getHours(); return h < 5 ? "Up late" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"; }
+function setGreeting() { const el = $("greet"); if (el) el.textContent = greetingWord() + ", " + USER_NAME; }
+
+const chatEl = $("chat"), greeterEl = $("greeter"), logEl = $("chat-log"), chipsEl = $("chat-chips");
+let chatStarted = false;
+const CHIPS = ["What's my nearest goal?", "How can I hit it?", "Summarize my day", "Read me an idea"];
+
+function bubble(role, html) {
+  const b = document.createElement("div");
+  b.className = "bubble bubble--" + (role === "you" ? "you" : "ai");
+  b.innerHTML = html;
+  logEl.appendChild(b);
+  logEl.scrollTop = logEl.scrollHeight;
+  return b;
+}
+function renderChips() {
+  chipsEl.innerHTML = "";
+  CHIPS.forEach((c) => { const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = c; b.addEventListener("click", () => sendMessage(c)); chipsEl.appendChild(b); });
+}
+
+/* local placeholder brain — reads the same state the app uses */
+function localBrain(text) {
+  const t = text.toLowerCase();
+  const open = state.goals.filter((g) => !g.done);
+  const dated = open.filter((g) => g.deadline).sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+  const nearest = dated[0];
+  const todays = state.schedule.filter((s) => s.day === todayKey());
+
+  if (/idea|jot|remember|note/.test(t)) {
+    if (!state.ideas.length) return "Your brain-dump is empty — jot a thought in the Ideas box and I'll keep it for you.";
+    const pick = state.ideas[Math.floor(Math.random() * state.ideas.length)];
+    return "Here's one from <strong>" + esc(fmtWhen(pick.createdAt)) + "</strong>:<br>“" + esc(pick.text) + "”";
+  }
+  if (/today|schedule|day/.test(t)) {
+    if (!todays.length) return "Nothing on today's schedule yet. Add a few things — or pull one from your short-term goals.";
+    const done = todays.filter((s) => s.done).length;
+    return "Today you've got <strong>" + todays.length + "</strong> item" + (todays.length > 1 ? "s" : "") + " (" + done + " done):<br>• " + todays.map((s) => esc(s.text)).join("<br>• ");
+  }
+  if (/nearest|next|coming|soon|deadline|due/.test(t)) {
+    if (!nearest) return "You don't have any goals with a deadline yet. Add one and I'll start the countdown.";
+    const left = new Date(nearest.deadline) - Date.now();
+    return "Your nearest goal is <strong>" + esc(nearest.title) + "</strong> — due " + esc(fmtWhen(nearest.deadline)) + " (" + esc(left <= 0 ? "overdue" : fmtCountdown(left) + " left") + ").";
+  }
+  if (/hit|achieve|how|plan|tips|reach|finish|done/.test(t)) {
+    if (!nearest && !open.length) return "Add a goal first and I'll help you break it down into a plan.";
+    const g = nearest || open[0];
+    const left = g.deadline ? new Date(g.deadline) - Date.now() : null;
+    return "To hit <strong>" + esc(g.title) + "</strong>" + (left != null ? " (" + esc(left <= 0 ? "overdue" : fmtCountdown(left) + " left") + ")" : "") + ", try this:<br>" +
+      "1. Break it into 2–3 concrete next steps.<br>" +
+      "2. Drop the first step into <strong>today's schedule</strong> so it's scheduled, not just hoped for.<br>" +
+      "3. Protect a focused block today and knock out step one.<br><br>Want me to add the first step to today?";
+  }
+  // default
+  const bits = [];
+  if (nearest) bits.push("your nearest goal is <strong>" + esc(nearest.title) + "</strong>");
+  if (todays.length) bits.push(todays.length + " thing" + (todays.length > 1 ? "s" : "") + " on today's list");
+  return "Hi " + USER_NAME + "! Ask me about your goals, your day, or your ideas." + (bits.length ? "<br>Right now, " + bits.join(" and ") + "." : "");
+  // NOTE: swap this whole function for: const r = await fetch('/api/chat', {...}); return r.text();
+}
+
+/* Ask the real Claude brain via /api/chat; fall back to localBrain on any failure
+   (no key set, offline, etc.) so the chat always responds. */
+async function getReply(text) {
+  try {
+    const r = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: text, goals: state.goals, schedule: state.schedule, ideas: state.ideas }),
+    });
+    if (!r.ok) throw new Error("status " + r.status);
+    const data = await r.json();
+    if (!data.reply) throw new Error("no reply");
+    return esc(data.reply).replace(/\n/g, "<br>");  // Claude returns plain text
+  } catch (e) {
+    return localBrain(text);                          // localBrain already returns safe HTML
+  }
+}
+
+function sendMessage(text) {
+  if (!text || !text.trim()) return;
+  bubble("you", esc(text));
+  greeterEl.classList.add("is-thinking");
+  const typing = bubble("ai", '<span class="typing"><span></span><span></span><span></span></span>');
+  getReply(text).then((html) => {
+    typing.innerHTML = html;
+    greeterEl.classList.remove("is-thinking");
+    logEl.scrollTop = logEl.scrollHeight;
+  });
+}
+
+function openChat() {
+  chatEl.hidden = false;
+  greeterEl.setAttribute("aria-expanded", "true");
+  if (!chatStarted) {
+    chatStarted = true;
+    renderChips();
+    setTimeout(() => bubble("ai", localBrain("")), 220);
+  }
+  $("chat-input").focus();
+}
+function toggleChat() { if (chatEl.hidden) openChat(); else { chatEl.hidden = true; greeterEl.setAttribute("aria-expanded", "false"); } }
+
+greeterEl.addEventListener("click", toggleChat);
+$("chat-form").addEventListener("submit", (e) => { e.preventDefault(); const i = $("chat-input"); const v = i.value; i.value = ""; sendMessage(v); });
+
 /* ---------- live clock + ticking countdowns ---------- */
 const clockEl = $("clock"), tzEl = $("tz");
 const tzName = Intl.DateTimeFormat().resolvedOptions().timeZone || "local";
@@ -287,6 +400,7 @@ if (tzEl) tzEl.textContent = tzName.replace(/_/g, " ");
 function tick() {
   const now = new Date();
   clockEl.firstChild.nodeValue = now.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" }) + "  ·  " + now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + "  ";
+  setGreeting();
   renderHero();              // keeps the hero countdown + danger flash live
 }
 
