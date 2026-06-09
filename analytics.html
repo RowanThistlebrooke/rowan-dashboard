@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Analytics · Helm Analytics</title>
+  <meta name="description" content="Analytics dashboard — sessions, conversion, device split, and channel performance." />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231E40AF'/><path d='M9 21V11M16 21V8M23 21v-6' stroke='white' stroke-width='2.5' stroke-linecap='round'/></svg>" />
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to content</a>
+  <div class="scrim" hidden></div>
+  <div class="layout">
+<aside class="sidebar" aria-label="Primary">
+<div class="brand"><span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 16V9M12 16V5M18 16v-4"/></svg></span>Helm</div>
+<nav class="nav">
+<span class="nav-label">Workspace</span>
+<a class="nav-item" href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Overview</a>
+<a class="nav-item active" href="analytics.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l3-4 4 3 5-7"/></svg>Analytics</a>
+<a class="nav-item" href="orders.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h2.2l2 12.5a2 2 0 0 0 2 1.7h8.6a2 2 0 0 0 2-1.6L21 7H6"/></svg>Orders</a>
+<a class="nav-item" href="customers.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Customers</a>
+<span class="nav-label">Insights</span>
+<a class="nav-item" href="reports.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/></svg>Reports</a>
+<a class="nav-item" href="settings.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</a>
+</nav>
+<div class="sidebar-footer"><div class="user-chip"><span class="avatar" aria-hidden="true">LR</span><span class="meta"><strong>Luke Reee</strong><small>luke@helm.io</small></span></div></div>
+</aside>
+    <div class="main">
+<header class="topbar">
+  <button class="icon-btn menu-toggle" data-action="toggle-menu" aria-label="Open navigation"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+  <div><h1>Analytics</h1><div class="crumb">Traffic, conversion, and engagement across all channels.</div></div>
+  <span class="spacer"></span>
+  <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input type="search" placeholder="Search…" aria-label="Search" /></label>
+  <button class="icon-btn" aria-label="Notifications (3 unread)"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+  <button class="icon-btn" data-action="toggle-theme" aria-label="Toggle theme"><svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+  <a class="btn btn-accent" href="reports.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>Export</a>
+</header>
+      <main class="content" id="main">
+<section class="grid kpi-grid" aria-label="Traffic metrics">
+  <article class="card kpi"><div class="top"><span class="label">Sessions</span></div><span class="value" data-count="92840">0</span><span class="delta up">+9.2% vs last week</span></article>
+  <article class="card kpi"><div class="top"><span class="label">Conversion</span></div><span class="value" data-count="3.42" data-decimals="2" data-suffix="%">0%</span><span class="delta up">+0.4%</span></article>
+  <article class="card kpi"><div class="top"><span class="label">Avg. session</span></div><span class="value" data-count="4.18" data-decimals="2" data-suffix="m">0m</span><span class="delta up">+18s</span></article>
+  <article class="card kpi"><div class="top"><span class="label">Bounce rate</span></div><span class="value" data-count="38.6" data-decimals="1" data-suffix="%">0%</span><span class="delta down">-2.1%</span></article>
+</section>
+
+<section class="grid col-2" style="margin-top:var(--space-5);" id="realtime">
+  <article class="card">
+    <div class="card-head"><div><h3>Sessions over time</h3><span class="sub">Daily · last 14 days</span></div><span class="badge ok">Healthy</span></div>
+    <figure class="linechart" role="img" aria-label="Daily sessions trending upward over fourteen days." data-values="58,62,55,71,68,74,80,77,85,92,88,96,103,110" data-labels="1,2,3,4,5,6,7,8,9,10,11,12,13,14"></figure>
+  </article>
+  <article class="card">
+    <div class="card-head"><div><h3>Device split</h3><span class="sub">This month</span></div></div>
+    <div class="donut"><div class="ring"><div class="hole"><div><strong>62%</strong><small>Mobile</small></div></div></div></div>
+    <div class="legend">
+      <div class="row"><span class="dot" style="background:var(--color-primary)"></span>Mobile<span class="val">62%</span></div>
+      <div class="row"><span class="dot" style="background:var(--color-secondary)"></span>Desktop<span class="val">28%</span></div>
+      <div class="row"><span class="dot" style="background:var(--color-accent)"></span>Tablet<span class="val">10%</span></div>
+    </div>
+  </article>
+</section>
+
+<section class="grid col-2" style="margin-top:var(--space-5);">
+  <article class="card">
+    <div class="card-head"><div><h3>Top channels</h3><span class="sub">Sessions by source</span></div></div>
+    <div class="bars" role="img" aria-label="Sessions by channel: Organic 34K, Direct 26K, Referral 19K, Social 14K, Email 9K, Paid 7K.">
+      <div class="bar-col"><div class="bar" style="height:90%" title="Organic: 34,200"></div><small>Org</small></div>
+      <div class="bar-col"><div class="bar" style="height:70%" title="Direct: 26,100"></div><small>Dir</small></div>
+      <div class="bar-col"><div class="bar" style="height:52%" title="Referral: 19,400"></div><small>Ref</small></div>
+      <div class="bar-col"><div class="bar" style="height:40%" title="Social: 14,800"></div><small>Soc</small></div>
+      <div class="bar-col"><div class="bar" style="height:26%" title="Email: 9,300"></div><small>Eml</small></div>
+      <div class="bar-col"><div class="bar" style="height:20%" title="Paid: 7,100"></div><small>Paid</small></div>
+    </div>
+  </article>
+  <article class="card">
+    <div class="card-head"><div><h3>Conversion funnel</h3><span class="sub">Visit to purchase</span></div></div>
+    <div class="bullet">
+      <div class="row"><span>Visited</span><span class="track"><span class="fill" style="width:100%"></span></span><span class="pct">100%</span></div>
+      <div class="row"><span>Signed up</span><span class="track"><span class="fill" style="width:64%"></span></span><span class="pct">64%</span></div>
+      <div class="row"><span>Added to cart</span><span class="track"><span class="fill" style="width:38%"></span></span><span class="pct">38%</span></div>
+      <div class="row"><span>Checkout</span><span class="track"><span class="fill" style="width:21%"></span></span><span class="pct">21%</span></div>
+      <div class="row"><span>Purchased</span><span class="track"><span class="fill" style="width:14%"></span></span><span class="pct good">14%</span></div>
+    </div>
+  </article>
+</section>
+      </main>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
