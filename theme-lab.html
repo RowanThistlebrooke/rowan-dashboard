@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Theme Lab · Rowan Analytics</title>
+  <meta name="description" content="Live design lab for the Rowan dashboard — tweak background, colors, fonts, radius, motion and one-click style presets, then copy a drop-in config." />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231E40AF'/><path d='M9 21V11M16 21V8M23 21v-6' stroke='white' stroke-width='2.5' stroke-linecap='round'/></svg>" />
+  <!-- font slot: swapped at runtime when a pairing is chosen -->
+  <link id="font-link" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" />
+
+  <style>
+    /* ============================================================
+       Theme Lab — studio chrome (intentionally NOT themed by the
+       variables, so the editor stays readable while you experiment).
+       The PREVIEW panel below is the real dashboard, driven live.
+       ============================================================ */
+    :root { color-scheme: dark; }
+    body.lab {
+      font-family: 'Fira Sans', system-ui, sans-serif;
+      background: #0a0e17;
+      color: #e6edf8;
+      margin: 0;
+      min-height: 100dvh;
+    }
+    .lab-shell { display: grid; grid-template-columns: 360px 1fr; min-height: 100dvh; }
+
+    /* ---------- Controls rail ---------- */
+    .rail {
+      background: #0e1320;
+      border-right: 1px solid #1d2840;
+      padding: 18px;
+      overflow-y: auto;
+      height: 100dvh;
+      position: sticky; top: 0;
+    }
+    .rail h1 {
+      font-family: 'Fira Code', monospace;
+      font-size: 17px; font-weight: 700; letter-spacing: -.01em;
+      display: flex; align-items: center; gap: 9px; margin: 0 0 4px;
+    }
+    .rail h1 .dot { width: 22px; height: 22px; border-radius: 6px; background: linear-gradient(135deg,#6366f1,#22d3ee); display: grid; place-items: center; }
+    .rail .tag { font-size: 12px; color: #8a99b8; margin-bottom: 18px; }
+
+    .group { margin-bottom: 22px; }
+    .group > .glabel { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #7d8db0; font-weight: 700; margin-bottom: 10px; display: block; }
+
+    .presets { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .preset {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 10px; border-radius: 9px; cursor: pointer;
+      border: 1px solid #21304d; background: #121a2c; color: #d7e1f5;
+      font-size: 12.5px; font-weight: 600; text-align: left;
+      transition: border-color .15s ease, background .15s ease, transform .12s ease;
+    }
+    .preset:hover { border-color: #3a4d76; transform: translateY(-1px); }
+    .preset.active { border-color: #6366f1; background: #1a2336; box-shadow: 0 0 0 1px #6366f1 inset; }
+    .preset .sw { width: 26px; height: 18px; border-radius: 5px; flex-shrink: 0; border: 1px solid rgba(255,255,255,.15); }
+
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    .row label { font-size: 13px; color: #c2cee6; font-weight: 500; }
+    .row .val { font-size: 12px; color: #8a99b8; font-family: 'Fira Code', monospace; }
+
+    input[type="color"] {
+      -webkit-appearance: none; appearance: none; width: 38px; height: 28px;
+      border: 1px solid #2a3a5c; border-radius: 7px; background: none; cursor: pointer; padding: 0;
+    }
+    input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+    input[type="color"]::-webkit-color-swatch { border: none; border-radius: 5px; }
+
+    input[type="range"] { width: 150px; accent-color: #6366f1; cursor: pointer; }
+
+    select, .seg {
+      background: #121a2c; color: #d7e1f5; border: 1px solid #2a3a5c;
+      border-radius: 8px; padding: 7px 9px; font-size: 13px; font-family: inherit; cursor: pointer;
+    }
+    select { width: 160px; }
+
+    .seg-wrap { display: inline-flex; gap: 4px; background: #0c1322; padding: 3px; border-radius: 9px; border: 1px solid #21304d; }
+    .seg { border: none; padding: 6px 12px; border-radius: 6px; background: transparent; color: #aebbd6; font-weight: 600; }
+    .seg.on { background: #6366f1; color: #fff; }
+
+    .toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    .toggle input { width: 16px; height: 16px; accent-color: #6366f1; cursor: pointer; }
+
+    .actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 6px; }
+    .lab-btn {
+      border: 1px solid #2a3a5c; background: #121a2c; color: #e6edf8;
+      padding: 11px 14px; border-radius: 10px; font-family: inherit; font-weight: 700;
+      font-size: 13.5px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      transition: filter .15s ease, background .15s ease, border-color .15s ease;
+    }
+    .lab-btn svg { width: 16px; height: 16px; }
+    .lab-btn.primary { background: linear-gradient(135deg,#6366f1,#22d3ee); border-color: transparent; color: #08111f; }
+    .lab-btn.primary:hover { filter: brightness(1.07); }
+    .lab-btn.ghost:hover { border-color: #3a4d76; background: #16203400; background: #162034; }
+    .lab-btn.copied { background: #16a34a; border-color: transparent; color: #fff; }
+
+    .share { margin-top: 22px; padding: 14px; border: 1px solid #1d2840; border-radius: 12px; background: #0c1322; }
+    .share .glabel { margin-bottom: 8px; }
+    .share .linkbox {
+      display: flex; gap: 6px; align-items: stretch; margin-bottom: 12px;
+    }
+    .share .linkbox input {
+      flex: 1; background: #0a0e17; border: 1px solid #2a3a5c; color: #b9c6e0;
+      border-radius: 8px; padding: 8px 10px; font-size: 12px; font-family: 'Fira Code', monospace; min-width: 0;
+    }
+    .share .mini {
+      border: 1px solid #2a3a5c; background: #121a2c; color: #cdd8ef; border-radius: 8px;
+      padding: 0 11px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
+    }
+    .share .mini.copied { background: #16a34a; color: #fff; border-color: transparent; }
+    .share p.hint { font-size: 11.5px; color: #7d8db0; line-height: 1.5; margin: 0; }
+
+    /* ---------- Preview stage ---------- */
+    .stage { padding: 22px; overflow: auto; height: 100dvh; }
+    .stage-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .stage-bar .t { font-family: 'Fira Code', monospace; font-weight: 700; font-size: 14px; }
+    .stage-bar .pill2 { font-size: 11px; color: #8a99b8; border: 1px solid #21304d; border-radius: 999px; padding: 3px 10px; }
+    .stage-bar .grow { flex: 1; }
+
+    /* The live preview is the REAL dashboard, rendered at scale inside a frame.
+       All design tokens below resolve from the .preview scope, set live by JS. */
+    .preview {
+      border-radius: 16px; overflow: hidden; border: 1px solid #1d2840;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+      /* tokens injected at runtime into #lab-preview-css */
+    }
+    .preview .layout { min-height: 0; }
+    .preview .sidebar { height: auto; position: static; }
+    .preview .topbar { position: static; }
+    .preview .content { padding: 20px; }
+
+    /* mobile */
+    @media (max-width: 920px) {
+      .lab-shell { grid-template-columns: 1fr; }
+      .rail { height: auto; position: static; border-right: none; border-bottom: 1px solid #1d2840; }
+      .stage { height: auto; }
+    }
+
+    /* Output style tags are injected here by JS */
+  </style>
+
+  <!-- live preview tokens (what you SEE) -->
+  <style id="lab-preview-css"></style>
+</head>
+
+<body class="lab">
+  <div class="lab-shell">
+
+    <!-- ============ CONTROLS ============ -->
+    <aside class="rail">
+      <h1>
+        <span class="dot"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#08111f" stroke-width="2.6" stroke-linecap="round"><path d="M6 16V9M12 16V5M18 16v-4"/></svg></span>
+        Theme Lab
+      </h1>
+      <div class="tag">Tweak it live → Copy config → paste to Claude.</div>
+
+      <!-- Presets -->
+      <div class="group">
+        <span class="glabel">Style presets</span>
+        <div class="presets" id="presets"></div>
+      </div>
+
+      <!-- Base mode -->
+      <div class="group">
+        <span class="glabel">Base mode</span>
+        <div class="seg-wrap" id="modeSeg">
+          <button class="seg on" data-mode="light">Light</button>
+          <button class="seg" data-mode="dark">Dark</button>
+        </div>
+      </div>
+
+      <!-- Colors -->
+      <div class="group" id="colorGroup">
+        <span class="glabel">Colors</span>
+        <!-- rows injected -->
+      </div>
+
+      <!-- Background -->
+      <div class="group">
+        <span class="glabel">Background style</span>
+        <div class="row">
+          <label for="bgSel">Fill</label>
+          <select id="bgSel">
+            <option value="solid">Solid</option>
+            <option value="gradient">Soft gradient</option>
+            <option value="mesh">Mesh glow</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Typography -->
+      <div class="group">
+        <span class="glabel">Typography</span>
+        <div class="row">
+          <label for="fontSel">Pairing</label>
+          <select id="fontSel"></select>
+        </div>
+      </div>
+
+      <!-- Shape -->
+      <div class="group">
+        <span class="glabel">Shape</span>
+        <div class="row">
+          <label for="radius">Corner radius</label>
+          <span class="val" id="radiusVal">12px</span>
+        </div>
+        <input type="range" id="radius" min="0" max="26" step="1" value="12" style="width:100%" />
+      </div>
+
+      <!-- Motion -->
+      <div class="group">
+        <span class="glabel">Motion</span>
+        <div class="row">
+          <label for="speed">Transition speed</label>
+          <span class="val" id="speedVal">180ms</span>
+        </div>
+        <input type="range" id="speed" min="0" max="500" step="20" value="180" style="width:100%; margin-bottom:12px" />
+        <label class="toggle"><input type="checkbox" id="entrance" /> Card entrance animation</label>
+        <label class="toggle" style="margin-top:8px"><input type="checkbox" id="lift" checked /> Hover lift on cards/tiles</label>
+      </div>
+
+      <!-- Actions -->
+      <div class="group">
+        <div class="actions">
+          <button class="lab-btn primary" id="copyBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy config
+          </button>
+          <button class="lab-btn ghost" id="resetBtn" title="Reset to dashboard default">Reset</button>
+        </div>
+      </div>
+
+      <!-- Share + reproduce -->
+      <div class="share">
+        <span class="glabel">Share this lab</span>
+        <div class="linkbox">
+          <input id="shareLink" readonly value="loading…" />
+          <button class="mini" id="copyLink">Copy</button>
+        </div>
+        <span class="glabel">Build one for your own dashboard</span>
+        <div class="linkbox">
+          <button class="mini" id="copyPrompt" style="flex:1; padding:8px">Copy the reusable prompt</button>
+        </div>
+        <p class="hint">Send the prompt to Claude Code inside any CSS-variable-based dashboard and it will generate a Theme Lab just like this one.</p>
+      </div>
+    </aside>
+
+    <!-- ============ LIVE PREVIEW ============ -->
+    <main class="stage">
+      <div class="stage-bar">
+        <span class="t">Live preview</span>
+        <span class="pill2" id="presetName">Default</span>
+        <span class="grow"></span>
+        <span class="pill2">This is your real dashboard, themed live</span>
+      </div>
+
+      <div class="preview" id="preview" data-theme="light">
+        <div class="layout">
+          <!-- sidebar -->
+          <aside class="sidebar">
+            <div class="brand">
+              <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 16V9M12 16V5M18 16v-4"/></svg></span>
+              Rowan
+            </div>
+            <nav class="nav">
+              <span class="nav-label">Workspace</span>
+              <a class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg> Overview</a>
+              <a class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l3-4 4 3 5-7"/></svg> Analytics</a>
+              <a class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h2.2l2 12.5a2 2 0 0 0 2 1.7h8.6a2 2 0 0 0 2-1.6L21 7H6"/></svg> Orders</a>
+            </nav>
+            <div class="sidebar-footer">
+              <div class="user-chip"><span class="avatar" aria-hidden="true">LR</span><span class="meta"><strong>Luke Reee</strong><small>luke@rowan.io</small></span></div>
+            </div>
+          </aside>
+
+          <!-- main -->
+          <div class="main">
+            <div class="topbar">
+              <h1>Overview</h1>
+              <span class="crumb">/ Workspace</span>
+              <span class="spacer"></span>
+              <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input placeholder="Search…" /></div>
+              <button class="btn btn-primary">+ New report</button>
+            </div>
+
+            <div class="content">
+              <div class="grid kpi-grid" style="margin-bottom:24px">
+                <div class="card kpi reveal">
+                  <div class="top"><span class="label">Revenue</span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span></div>
+                  <span class="value">$48.2k</span>
+                  <span class="delta up">▲ 12.4%</span>
+                </div>
+                <div class="card kpi reveal">
+                  <div class="top"><span class="label">Orders</span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg></span></div>
+                  <span class="value">1,284</span>
+                  <span class="delta up">▲ 6.1%</span>
+                </div>
+                <div class="card kpi reveal">
+                  <div class="top"><span class="label">Customers</span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span></div>
+                  <span class="value">892</span>
+                  <span class="delta down">▼ 1.2%</span>
+                </div>
+                <div class="card kpi reveal">
+                  <div class="top"><span class="label">Churn</span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span></div>
+                  <span class="value">2.4%</span>
+                  <span class="delta up">▲ 0.3%</span>
+                </div>
+              </div>
+
+              <div class="grid col-2">
+                <div class="card reveal">
+                  <div class="card-head"><h3>Revenue trend</h3><span class="sub">Last 7 months</span></div>
+                  <div class="bars">
+                    <div class="bar-col"><div class="bar" style="height:52%"></div><small>Jan</small></div>
+                    <div class="bar-col"><div class="bar" style="height:64%"></div><small>Feb</small></div>
+                    <div class="bar-col"><div class="bar" style="height:48%"></div><small>Mar</small></div>
+                    <div class="bar-col"><div class="bar" style="height:78%"></div><small>Apr</small></div>
+                    <div class="bar-col"><div class="bar" style="height:69%"></div><small>May</small></div>
+                    <div class="bar-col"><div class="bar" style="height:90%"></div><small>Jun</small></div>
+                    <div class="bar-col"><div class="bar" style="height:84%"></div><small>Jul</small></div>
+                  </div>
+                </div>
+                <div class="card reveal">
+                  <div class="card-head"><h3>Traffic mix</h3></div>
+                  <div class="donut"><div class="ring"><div class="hole"><strong>62%</strong><small>direct</small></div></div></div>
+                  <div class="legend">
+                    <div class="row"><span class="dot" style="background:var(--color-primary)"></span> Direct <span class="val">46%</span></div>
+                    <div class="row"><span class="dot" style="background:var(--color-secondary)"></span> Referral <span class="val">28%</span></div>
+                    <div class="row"><span class="dot" style="background:var(--color-accent)"></span> Social <span class="val">16%</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card reveal" style="margin-top:24px">
+                <div class="card-head"><h3>Recent orders</h3><span class="sub">live</span></div>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th></tr></thead>
+                    <tbody>
+                      <tr><td class="numeric">#10482</td><td>A. Rivera</td><td class="numeric">$248.00</td><td><span class="badge ok">Paid</span></td></tr>
+                      <tr><td class="numeric">#10481</td><td>M. Chen</td><td class="numeric">$92.50</td><td><span class="badge warn">Pending</span></td></tr>
+                      <tr><td class="numeric">#10480</td><td>S. Okafor</td><td class="numeric">$1,120.00</td><td><span class="badge err">Failed</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Hidden textarea used purely for reliable clipboard fallback -->
+  <textarea id="clip" style="position:fixed;left:-9999px;top:0" aria-hidden="true"></textarea>
+
+  <script>
+  (function () {
+    "use strict";
+
+    // ---------- Data: presets ----------
+    const FONTS = {
+      fira:    { name: "Fira Sans / Fira Code", body: "'Fira Sans', system-ui, sans-serif", head: "'Fira Code', ui-monospace, monospace", imp: "Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700" },
+      inter:   { name: "Inter / Inter",          body: "'Inter', system-ui, sans-serif",     head: "'Inter', system-ui, sans-serif",     imp: "Inter:wght@400;500;600;700;800" },
+      sora:    { name: "Inter / Sora",           body: "'Inter', sans-serif",                head: "'Sora', sans-serif",                 imp: "Inter:wght@400;500;600;700&family=Sora:wght@600;700;800" },
+      space:   { name: "Inter / Space Grotesk",  body: "'Inter', sans-serif",                head: "'Space Grotesk', sans-serif",        imp: "Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700" },
+      manrope: { name: "Manrope / Manrope",      body: "'Manrope', sans-serif",              head: "'Manrope', sans-serif",              imp: "Manrope:wght@400;500;600;700;800" },
+      poppins: { name: "Inter / Poppins",        body: "'Inter', sans-serif",                head: "'Poppins', sans-serif",              imp: "Inter:wght@400;500;600&family=Poppins:wght@500;600;700" },
+      mono:    { name: "JetBrains Mono",         body: "'JetBrains Mono', monospace",        head: "'JetBrains Mono', monospace",        imp: "JetBrains+Mono:wght@400;500;700" }
+    };
+
+    // color keys map to dashboard CSS variables
+    const COLOR_KEYS = [
+      ["primary",    "--color-primary",    "Primary"],
+      ["secondary",  "--color-secondary",  "Secondary"],
+      ["accent",     "--color-accent",     "Accent"],
+      ["background", "--color-background", "Background"],
+      ["surface",    "--color-surface",    "Surface"],
+      ["foreground", "--color-foreground", "Text"],
+      ["border",     "--color-border",     "Border"]
+    ];
+
+    const PRESETS = {
+      default:   { label: "Default",    mode: "light", font: "fira",    radius: 12, speed: 180, bg: "solid",    fx: [],            entrance: false, lift: true,
+                   primary: "#1E40AF", secondary: "#3B82F6", accent: "#D97706", background: "#F8FAFC", surface: "#FFFFFF", foreground: "#0F1E3D", border: "#DBEAFE" },
+      glass:     { label: "Glass",      mode: "dark",  font: "manrope", radius: 18, speed: 240, bg: "mesh",     fx: ["glass"],     entrance: true,  lift: true,
+                   primary: "#8B5CF6", secondary: "#22D3EE", accent: "#F472B6", background: "#0B0F1A", surface: "rgba(255,255,255,.06)", foreground: "#EAF0FF", border: "rgba(255,255,255,.14)" },
+      minimal:   { label: "Minimal",    mode: "light", font: "inter",   radius: 6,  speed: 140, bg: "solid",    fx: [],            entrance: false, lift: false,
+                   primary: "#111827", secondary: "#374151", accent: "#111827", background: "#FFFFFF", surface: "#FFFFFF", foreground: "#111827", border: "#E5E7EB" },
+      neon:      { label: "Neon",       mode: "dark",  font: "space",   radius: 10, speed: 200, bg: "mesh",     fx: ["glow"],      entrance: true,  lift: true,
+                   primary: "#22D3EE", secondary: "#38BDF8", accent: "#F0ABFC", background: "#05070D", surface: "#0C1322", foreground: "#D6F5FF", border: "#15324A" },
+      clay:      { label: "Clay",       mode: "light", font: "poppins", radius: 22, speed: 260, bg: "solid",    fx: ["clay"],      entrance: false, lift: true,
+                   primary: "#7C3AED", secondary: "#A78BFA", accent: "#FB7185", background: "#EEF0FB", surface: "#F6F7FE", foreground: "#312E55", border: "#E0E2F5" },
+      brutalist: { label: "Brutalist",  mode: "light", font: "mono",    radius: 0,  speed: 0,   bg: "solid",    fx: ["brutal"],    entrance: false, lift: false,
+                   primary: "#000000", secondary: "#2563EB", accent: "#FACC15", background: "#FFFEF2", surface: "#FFFFFF", foreground: "#000000", border: "#000000" },
+      sunset:    { label: "Sunset",     mode: "dark",  font: "sora",    radius: 16, speed: 220, bg: "gradient", fx: [],            entrance: true,  lift: true,
+                   primary: "#FB7185", secondary: "#FB923C", accent: "#FBBF24", background: "#1A1020", surface: "#241327", foreground: "#FFE9EC", border: "#3A2336" },
+      emerald:   { label: "Emerald",    mode: "light", font: "inter",   radius: 12, speed: 180, bg: "solid",    fx: [],            entrance: false, lift: true,
+                   primary: "#047857", secondary: "#10B981", accent: "#F59E0B", background: "#F2FBF6", surface: "#FFFFFF", foreground: "#06281E", border: "#CDEBDC" }
+    };
+
+    // ---------- State ----------
+    let activePreset = "default";
+    const state = Object.assign({}, PRESETS.default);
+
+    // ---------- DOM refs ----------
+    const $ = (id) => document.getElementById(id);
+    const previewCss = $("lab-preview-css");
+    const fontLink = $("font-link");
+    const presetName = $("presetName");
+
+    // ---------- Build preset buttons ----------
+    const presetWrap = $("presets");
+    Object.keys(PRESETS).forEach((key) => {
+      const p = PRESETS[key];
+      const b = document.createElement("button");
+      b.className = "preset" + (key === activePreset ? " active" : "");
+      b.dataset.key = key;
+      b.innerHTML = '<span class="sw" style="background:linear-gradient(135deg,' + p.primary + ',' + p.secondary + ')"></span>' + p.label;
+      b.addEventListener("click", () => applyPreset(key));
+      presetWrap.appendChild(b);
+    });
+
+    // ---------- Build color rows ----------
+    const colorGroup = $("colorGroup");
+    COLOR_KEYS.forEach(([k, , label]) => {
+      const row = document.createElement("div");
+      row.className = "row";
+      // color inputs only accept hex; for rgba presets we show a neutral swatch but keep state value
+      const safe = /^#([0-9a-f]{6})$/i.test(state[k]) ? state[k] : "#888888";
+      row.innerHTML = '<label>' + label + '</label>' +
+        '<input type="color" data-k="' + k + '" value="' + safe + '" />';
+      colorGroup.appendChild(row);
+      row.querySelector("input").addEventListener("input", (e) => {
+        state[k] = e.target.value;
+        markCustom();
+        render();
+      });
+    });
+
+    // ---------- Build font select ----------
+    const fontSel = $("fontSel");
+    Object.keys(FONTS).forEach((k) => {
+      const o = document.createElement("option");
+      o.value = k; o.textContent = FONTS[k].name;
+      fontSel.appendChild(o);
+    });
+
+    // ---------- Controls wiring ----------
+    $("modeSeg").addEventListener("click", (e) => {
+      const btn = e.target.closest(".seg");
+      if (!btn) return;
+      state.mode = btn.dataset.mode;
+      syncControls(); markCustom(); render();
+    });
+    fontSel.addEventListener("change", (e) => { state.font = e.target.value; markCustom(); render(); });
+    $("bgSel").addEventListener("change", (e) => { state.bg = e.target.value; markCustom(); render(); });
+    $("radius").addEventListener("input", (e) => { state.radius = +e.target.value; $("radiusVal").textContent = state.radius + "px"; markCustom(); render(); });
+    $("speed").addEventListener("input", (e) => { state.speed = +e.target.value; $("speedVal").textContent = state.speed + "ms"; markCustom(); render(); });
+    $("entrance").addEventListener("change", (e) => { state.entrance = e.target.checked; markCustom(); render(); });
+    $("lift").addEventListener("change", (e) => { state.lift = e.target.checked; markCustom(); render(); });
+
+    // ---------- Preset application ----------
+    function applyPreset(key) {
+      activePreset = key;
+      Object.assign(state, PRESETS[key]);
+      document.querySelectorAll(".preset").forEach((b) => b.classList.toggle("active", b.dataset.key === key));
+      syncControls();
+      render();
+    }
+    function markCustom() {
+      activePreset = "custom";
+      document.querySelectorAll(".preset").forEach((b) => b.classList.remove("active"));
+    }
+
+    function syncControls() {
+      // mode segmented
+      document.querySelectorAll("#modeSeg .seg").forEach((b) => b.classList.toggle("on", b.dataset.mode === state.mode));
+      // colors
+      COLOR_KEYS.forEach(([k]) => {
+        const inp = document.querySelector('input[data-k="' + k + '"]');
+        if (inp && /^#([0-9a-f]{6})$/i.test(state[k])) inp.value = state[k];
+      });
+      fontSel.value = state.font;
+      $("bgSel").value = state.bg;
+      $("radius").value = state.radius; $("radiusVal").textContent = state.radius + "px";
+      $("speed").value = state.speed; $("speedVal").textContent = state.speed + "ms";
+      $("entrance").checked = !!state.entrance;
+      $("lift").checked = !!state.lift;
+    }
+
+    // ---------- Background image helpers ----------
+    function bgValue(s) {
+      if (s.bg === "gradient") {
+        return "linear-gradient(160deg, " + s.background + " 0%, color-mix(in srgb, " + s.primary + " 22%, " + s.background + ") 100%)";
+      }
+      if (s.bg === "mesh") {
+        return "radial-gradient(60% 50% at 12% 0%, color-mix(in srgb, " + s.primary + " 28%, transparent) 0%, transparent 60%)," +
+               "radial-gradient(55% 50% at 100% 8%, color-mix(in srgb, " + s.secondary + " 26%, transparent) 0%, transparent 55%)," +
+               "radial-gradient(50% 60% at 75% 100%, color-mix(in srgb, " + s.accent + " 20%, transparent) 0%, transparent 60%)," +
+               s.background;
+      }
+      return s.background;
+    }
+
+    // ---------- Effect (preset fx) CSS ----------
+    function fxCss(scope, s) {
+      let out = "";
+      const cardSel = scope + " .card, " + scope + " .tile";
+      if (s.fx.indexOf("glass") > -1) {
+        out += cardSel + "{ backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); background: color-mix(in srgb, " + s.surface + " 88%, transparent); }\n";
+        out += scope + " .topbar{ backdrop-filter: blur(16px); }\n";
+      }
+      if (s.fx.indexOf("glow") > -1) {
+        out += cardSel + "{ box-shadow: 0 0 0 1px color-mix(in srgb, " + s.primary + " 30%, transparent), 0 0 28px color-mix(in srgb, " + s.primary + " 16%, transparent); }\n";
+        out += scope + " .value{ text-shadow: 0 0 18px color-mix(in srgb, " + s.primary + " 45%, transparent); }\n";
+      }
+      if (s.fx.indexOf("clay") > -1) {
+        out += cardSel + "{ box-shadow: 8px 8px 18px color-mix(in srgb, " + s.foreground + " 12%, transparent), -8px -8px 18px rgba(255,255,255,.85); border: none; }\n";
+      }
+      if (s.fx.indexOf("brutal") > -1) {
+        out += cardSel + "{ border: 2px solid " + s.foreground + "; box-shadow: 5px 5px 0 " + s.foreground + "; }\n";
+        out += scope + " .btn{ border: 2px solid " + s.foreground + "; box-shadow: 3px 3px 0 " + s.foreground + "; }\n";
+      }
+      return out;
+    }
+
+    function motionCss(scope, s) {
+      const dur = s.speed + "ms";
+      const targets = [".nav-item", ".btn", ".icon-btn", ".tile", ".bars .bar", "tbody tr", ".search", ".field input"]
+        .map((t) => scope + " " + t).join(", ");
+      let out = targets + "{ transition-duration: " + dur + "; }\n";
+      // hover lift
+      if (s.lift) {
+        out += scope + " .card:hover, " + scope + " .tile:hover{ transform: translateY(-3px); box-shadow: var(--shadow-md); }\n";
+      } else {
+        out += scope + " .tile:hover{ transform: none; }\n";
+      }
+      // card entrance
+      if (s.entrance) {
+        out += "@keyframes labReveal{ from{ opacity:0; transform: translateY(10px);} to{ opacity:1; transform:none;} }\n";
+        out += scope + " .reveal{ animation: labReveal " + Math.max(s.speed, 220) + "ms ease-out both; }\n";
+        out += scope + " .reveal:nth-child(2){ animation-delay: 40ms; }\n";
+        out += scope + " .reveal:nth-child(3){ animation-delay: 80ms; }\n";
+        out += scope + " .reveal:nth-child(4){ animation-delay: 120ms; }\n";
+      }
+      out += "@media (prefers-reduced-motion: reduce){ " + scope + " .reveal{ animation: none; } }\n";
+      return out;
+    }
+
+    // ---------- Core CSS generator ----------
+    // scoped=true → target ".preview" (live preview). scoped=false → target ":root"/"body" (export).
+    function genCSS(s, scoped) {
+      const f = FONTS[s.font];
+      const rootSel = scoped ? ".preview" : ":root";
+      const modeSel = s.mode === "dark"
+        ? (scoped ? ".preview" : "[data-theme=\"dark\"], :root")
+        : rootSel;
+      const fontScope = scoped ? ".preview" : "body";
+      const headScope = scoped
+        ? ".preview h1, .preview h2, .preview h3, .preview .numeric, .preview .value, .preview .brand"
+        : "h1, h2, h3, .numeric";
+      const bgScope = scoped ? ".preview .layout" : "body";
+      const scope = scoped ? ".preview" : "";
+
+      let vars = "";
+      COLOR_KEYS.forEach(([k, cssVar]) => { vars += "  " + cssVar + ": " + s[k] + ";\n"; });
+      vars += "  --color-ring: " + s.primary + ";\n";
+      vars += "  --radius: " + s.radius + "px;\n";
+      vars += "  --radius-sm: " + Math.max(0, s.radius - 4) + "px;\n";
+
+      let css = "";
+      // when exporting a dark base, push tokens onto both :root and [data-theme=dark] so it shows by default
+      css += (s.mode === "dark" && !scoped ? ":root, [data-theme=\"dark\"]" : rootSel) + " {\n" + vars + "}\n\n";
+      css += fontScope + " { font-family: " + f.body + "; }\n";
+      css += headScope + " { font-family: " + f.head + "; }\n";
+      css += bgScope + " { background: " + bgValue(s) + "; }\n\n";
+      css += motionCss(scope, s);
+      const fx = fxCss(scope, s);
+      if (fx) css += "\n/* preset effects */\n" + fx;
+      return css;
+    }
+
+    // ---------- Render (live preview) ----------
+    function render() {
+      const css = genCSS(state, true);
+      previewCss.textContent = css;
+      $("preview").setAttribute("data-theme", state.mode);
+      // swap fonts
+      const f = FONTS[state.font];
+      const href = "https://fonts.googleapis.com/css2?family=" + f.imp + "&display=swap";
+      if (fontLink.getAttribute("href") !== href) fontLink.setAttribute("href", href);
+      presetName.textContent = activePreset === "custom" ? "Custom" : PRESETS[activePreset].label;
+    }
+
+    // ---------- Export / clipboard ----------
+    function exportConfig() {
+      const f = FONTS[state.font];
+      const css = genCSS(state, false);
+      const head =
+"/* ╔══════════════════════════════════════════════════════════╗\n" +
+"   ║  ROWAN DASHBOARD · THEME CONFIG  (theme-lab v1)            ║\n" +
+"   ╚══════════════════════════════════════════════════════════╝\n" +
+"   HOW TO APPLY — paste this whole block to Claude and say:\n" +
+"     \"Apply this Rowan theme config to styles.css\"\n" +
+"   Claude: append everything below to the END of styles.css\n" +
+"   (it overrides the defaults by cascade order). Also update the\n" +
+"   @import font line shown here.\n" +
+"   ----------------------------------------------------------------\n" +
+"   Preset : " + (activePreset === "custom" ? "Custom" : PRESETS[activePreset].label) + "\n" +
+"   Mode   : " + state.mode + "\n" +
+"   Font   : " + f.name + "\n" +
+"   Radius : " + state.radius + "px   Motion: " + state.speed + "ms   Background: " + state.bg + "\n" +
+"   Effects: " + (state.fx.length ? state.fx.join(", ") : "none") +
+              (state.entrance ? ", card-entrance" : "") + (state.lift ? ", hover-lift" : "") + "\n" +
+"*/\n\n" +
+"@import url('https://fonts.googleapis.com/css2?family=" + f.imp + "&display=swap');\n\n";
+      return head + css + "\n/* === END ROWAN THEME CONFIG === */\n";
+    }
+
+    function copyText(text, btn, doneLabel) {
+      const old = btn.textContent;
+      const ok = () => { btn.classList.add("copied"); btn.textContent = doneLabel || "Copied!"; setTimeout(() => { btn.classList.remove("copied"); btn.textContent = old; }, 1600); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(ok).catch(() => fallback(text, ok));
+      } else { fallback(text, ok); }
+    }
+    function fallback(text, ok) {
+      const ta = $("clip"); ta.value = text; ta.select();
+      try { document.execCommand("copy"); ok(); } catch (e) { alert("Copy failed — select the text manually."); }
+    }
+
+    $("copyBtn").addEventListener("click", function () {
+      const btn = this;
+      const old = btn.innerHTML;
+      copyTextRich(exportConfig(), btn, old);
+    });
+    function copyTextRich(text, btn, oldHtml) {
+      const done = () => { btn.classList.add("copied"); btn.innerHTML = "✓ Copied config"; setTimeout(() => { btn.classList.remove("copied"); btn.innerHTML = oldHtml; }, 1800); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done).catch(() => fallback(text, done));
+      else fallback(text, done);
+    }
+
+    $("resetBtn").addEventListener("click", () => applyPreset("default"));
+
+    // ---------- Share link + reusable prompt ----------
+    const link = location.origin + location.pathname;
+    $("shareLink").value = link;
+    $("copyLink").addEventListener("click", function () { copyText(link, this, "Copied"); });
+
+    const REUSE_PROMPT =
+"Build me a \"Theme Lab\" page (theme-lab.html) for this dashboard, modeled on the Rowan one. " +
+"Read my stylesheet, detect every CSS custom property it uses (colors, radius, shadows, fonts) and the component classes, " +
+"then create a single self-contained HTML page that: (1) links my real stylesheet and renders a live mini-dashboard preview using my real classes; " +
+"(2) drives the preview by writing CSS variables onto a scoped \".preview\" selector so nothing else is affected; " +
+"(3) gives controls for base light/dark mode, every color, background fill (solid/gradient/mesh), a font-pairing selector that hot-swaps Google Fonts, " +
+"corner radius, transition speed, hover-lift and card-entrance toggles; (4) includes one-click style presets (Default, Glass, Minimal, Neon, Clay, Brutalist, Sunset, Emerald) " +
+"as bundles of those settings, with extra effect CSS (backdrop-blur, glow, clay shadows, brutalist borders) for the relevant ones; " +
+"(5) has a \"Copy config\" button that emits a clearly-marked, self-describing CSS block (with a header comment explaining how to apply it, the chosen @import font line, " +
+"a :root / [data-theme] override, font-family overrides, motion rules and preset-effect CSS) designed to be appended to the END of my stylesheet; " +
+"(6) shows its own live deploy link via location.origin and a copy button. Keep the editor chrome unthemed so it stays readable. Respect prefers-reduced-motion.";
+
+    $("copyPrompt").addEventListener("click", function () { copyText(REUSE_PROMPT, this, "Copied prompt"); });
+
+    // ---------- Init ----------
+    syncControls();
+    render();
+  })();
+  </script>
+</body>
+</html>
