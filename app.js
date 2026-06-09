@@ -1,195 +1,299 @@
-// ============================================================
-//  Dashboard — shared behavior
-//  Theme toggle · mobile sidebar · SVG charts · count-up · table sort
-// ============================================================
-(function () {
-  'use strict';
+/* ============================================================
+   Goals & Daily Schedule — app logic
+   - Store: Supabase (when reachable) with localStorage fallback,
+     so the app works instantly and syncs when the tables exist.
+   - Live deadline countdowns + the filling timer line.
+   - Brain-dump ideas with "surprise me" resurfacing.
 
-  const root = document.documentElement;
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+   Tables expected (see supabase-setup.sql):
+     goals(id uuid, type text, title text, created_at, deadline, done)
+     schedule_items(id uuid, day date, text text, done, from_goal_id, created_at)
+     ideas(id uuid, text text, created_at)
+   The anon key below is the public/publishable key — safe in client code;
+   data access is governed by Row-Level Security in Supabase.
+   ============================================================ */
 
-  /* ---------- Theme (persisted) ---------- */
-  const saved = localStorage.getItem('theme');
-  if (saved) root.setAttribute('data-theme', saved);
-  else if (window.matchMedia('(prefers-color-scheme: dark)').matches) root.setAttribute('data-theme', 'dark');
+const SUPABASE_URL = "https://xwflimbghmdlmhuuabnc.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3ZmxpbWJnaG1kbG1odXVhYm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMDkxODksImV4cCI6MjA5NjU4NTE4OX0.jzrFGazXFsTE3qKK27oICEDhNH8Fqo4nkYnf5BolY-c";
 
-  function setThemeIcon() {
-    const dark = root.getAttribute('data-theme') === 'dark';
-    document.querySelectorAll('[data-action="toggle-theme"]').forEach(function (b) {
-      b.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
-      b.querySelector('.i-sun')?.toggleAttribute('hidden', !dark);
-      b.querySelector('.i-moon')?.toggleAttribute('hidden', dark);
-    });
+/* ---------- tiny helpers ---------- */
+const $ = (id) => document.getElementById(id);
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "id-" + Date.now() + "-" + Math.random().toString(16).slice(2));
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const HOUR = 3600e3, DAY = 86400e3, MIN = 60e3;
+const todayKey = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+
+/* ---------- state ---------- */
+const state = { goals: [], schedule: [], ideas: [] };
+let supa = null;            // supabase client (set async)
+let remoteOK = false;       // tables reachable?
+
+/* ---------- localStorage (instant) ---------- */
+const LS = { goals: "gs.goals", schedule: "gs.schedule", ideas: "gs.ideas" };
+function loadLocal() {
+  try {
+    state.goals = JSON.parse(localStorage.getItem(LS.goals) || "[]");
+    state.schedule = JSON.parse(localStorage.getItem(LS.schedule) || "[]");
+    state.ideas = JSON.parse(localStorage.getItem(LS.ideas) || "[]");
+  } catch (e) { /* corrupt store — start clean */ }
+}
+function saveLocal() {
+  localStorage.setItem(LS.goals, JSON.stringify(state.goals));
+  localStorage.setItem(LS.schedule, JSON.stringify(state.schedule));
+  localStorage.setItem(LS.ideas, JSON.stringify(state.ideas));
+}
+
+/* ---------- Supabase sync (best-effort) ---------- */
+async function initSupabase() {
+  try {
+    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+    supa = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    await pullAll();
+  } catch (e) {
+    console.warn("[goals] Supabase unavailable — running on local storage only.", e);
   }
-  setThemeIcon();
+}
+async function pullAll() {
+  if (!supa) return;
+  try {
+    const [g, s, i] = await Promise.all([
+      supa.from("goals").select("*"),
+      supa.from("schedule_items").select("*"),
+      supa.from("ideas").select("*"),
+    ]);
+    if (g.error || s.error || i.error) {
+      const err = g.error || s.error || i.error;
+      console.warn("[goals] Could not read Supabase tables yet — using local data. Run supabase-setup.sql in the SQL editor.", err.message);
+      remoteOK = false;
+      return;
+    }
+    remoteOK = true;
+    state.goals = (g.data || []).map(rowToGoal);
+    state.schedule = (s.data || []).map(rowToSched);
+    state.ideas = (i.data || []).map(rowToIdea);
+    saveLocal();
+    renderAll();
+  } catch (e) {
+    console.warn("[goals] Supabase read failed — using local data.", e);
+  }
+}
+function push(table, row) { if (supa && remoteOK) supa.from(table).upsert(row).then(({ error }) => { if (error) console.warn("[goals] sync upsert failed", error.message); }); }
+function removeRemote(table, id) { if (supa && remoteOK) supa.from(table).delete().eq("id", id).then(({ error }) => { if (error) console.warn("[goals] sync delete failed", error.message); }); }
 
-  document.addEventListener('click', function (e) {
-    if (e.target.closest('[data-action="toggle-theme"]')) {
-      const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-      root.setAttribute('data-theme', next);
-      localStorage.setItem('theme', next);
-      setThemeIcon();
-      requestAnimationFrame(renderAllCharts); // re-tint theme-dependent charts
-    }
-    if (e.target.closest('[data-action="toggle-menu"]')) {
-      document.querySelector('.sidebar')?.classList.toggle('open');
-      document.querySelector('.scrim')?.toggleAttribute('hidden');
-    }
-    if (e.target.classList.contains('scrim')) {
-      document.querySelector('.sidebar')?.classList.remove('open');
-      e.target.setAttribute('hidden', '');
-    }
+/* row<->model mapping (snake_case in DB) */
+const goalToRow = (g) => ({ id: g.id, type: g.type, title: g.title, created_at: g.createdAt, deadline: g.deadline, done: g.done });
+const rowToGoal = (r) => ({ id: r.id, type: r.type, title: r.title, createdAt: r.created_at, deadline: r.deadline, done: r.done });
+const schedToRow = (s) => ({ id: s.id, day: s.day, text: s.text, done: s.done, from_goal_id: s.fromGoalId || null, created_at: s.createdAt });
+const rowToSched = (r) => ({ id: r.id, day: r.day, text: r.text, done: r.done, fromGoalId: r.from_goal_id, createdAt: r.created_at });
+const ideaToRow = (i) => ({ id: i.id, text: i.text, created_at: i.createdAt });
+const rowToIdea = (r) => ({ id: r.id, text: r.text, createdAt: r.created_at });
+
+/* ---------- mutations ---------- */
+function addGoal(type, title, deadline) {
+  const g = { id: uid(), type, title: title.trim(), createdAt: new Date().toISOString(), deadline: deadline || null, done: false };
+  state.goals.push(g); saveLocal(); push("goals", goalToRow(g)); renderAll();
+}
+function toggleGoal(id) {
+  const g = state.goals.find((x) => x.id === id); if (!g) return;
+  g.done = !g.done; saveLocal(); push("goals", goalToRow(g)); renderAll();
+}
+function deleteGoal(id) {
+  state.goals = state.goals.filter((x) => x.id !== id); saveLocal(); removeRemote("goals", id); renderAll();
+}
+function addToToday(goalId) {
+  const g = state.goals.find((x) => x.id === goalId); if (!g) return;
+  const it = { id: uid(), day: todayKey(), text: g.title, done: false, fromGoalId: g.id, createdAt: new Date().toISOString() };
+  state.schedule.push(it); saveLocal(); push("schedule_items", schedToRow(it)); renderAll();
+  selectTab("daily");
+}
+function addDaily(text) {
+  const it = { id: uid(), day: todayKey(), text: text.trim(), done: false, fromGoalId: null, createdAt: new Date().toISOString() };
+  state.schedule.push(it); saveLocal(); push("schedule_items", schedToRow(it)); renderAll();
+}
+function toggleDaily(id) {
+  const it = state.schedule.find((x) => x.id === id); if (!it) return;
+  it.done = !it.done; saveLocal(); push("schedule_items", schedToRow(it)); renderAll();
+}
+function deleteDaily(id) {
+  state.schedule = state.schedule.filter((x) => x.id !== id); saveLocal(); removeRemote("schedule_items", id); renderAll();
+}
+function addIdea(text) {
+  const it = { id: uid(), text: text.trim(), createdAt: new Date().toISOString() };
+  state.ideas.unshift(it); saveLocal(); push("ideas", ideaToRow(it)); renderAll();
+}
+function deleteIdea(id) {
+  state.ideas = state.ideas.filter((x) => x.id !== id); saveLocal(); removeRemote("ideas", id); renderAll();
+}
+
+/* ---------- time formatting ---------- */
+function fmtLeft(ms) {
+  if (ms <= 0) return "overdue";
+  if (ms < HOUR) return Math.max(1, Math.round(ms / MIN)) + "m left";
+  if (ms < DAY) return Math.round(ms / HOUR) + "h left";
+  return Math.round(ms / DAY) + "d left";
+}
+function fmtCountdown(ms) {
+  if (ms <= 0) return "overdue";
+  const d = Math.floor(ms / DAY), h = Math.floor((ms % DAY) / HOUR), m = Math.floor((ms % HOUR) / MIN), s = Math.floor((ms % MIN) / 1000);
+  if (d > 0) return d + "d " + h + "h " + m + "m";
+  if (h > 0) return h + "h " + m + "m";
+  return m + "m " + s + "s";
+}
+function fmtWhen(iso) { return new Date(iso).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); }
+/* warning lead time scales with the goal's length: ~1h for short goals up to ~1 day for long ones */
+function leadFor(g) {
+  const span = g.deadline && g.createdAt ? new Date(g.deadline) - new Date(g.createdAt) : 0;
+  return Math.min(DAY, Math.max(HOUR, span * 0.1));
+}
+function urgency(g) {
+  if (!g.deadline || g.done) return null;
+  const left = new Date(g.deadline) - Date.now();
+  if (left <= 0) return "red";
+  if (left <= leadFor(g)) return "red";
+  if (left <= leadFor(g) * 3) return "amber";
+  return "accent";
+}
+
+/* ---------- timer line sizing (positional gradient) ---------- */
+function sizeTimers() {
+  document.querySelectorAll(".timer__track").forEach((tr) => {
+    const fill = tr.querySelector(".timer__fill");
+    if (fill) fill.style.setProperty("--timer-w", tr.clientWidth + "px");
   });
+}
+function progressOf(g) {
+  if (!g.deadline) return 0;
+  const start = new Date(g.createdAt).getTime(), end = new Date(g.deadline).getTime(), now = Date.now();
+  if (end <= start) return 1;
+  return Math.max(0, Math.min(1, (now - start) / (end - start)));
+}
 
-  /* ---------- Helpers ---------- */
-  function cssVar(name) { return getComputedStyle(root).getPropertyValue(name).trim(); }
-  function svgEl(tag, attrs) {
-    const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
-    for (const k in attrs) el.setAttribute(k, attrs[k]);
-    return el;
-  }
+/* ---------- rendering ---------- */
+function renderAll() { renderGoals("long"); renderGoals("short"); renderDaily(); renderIdeas(); renderHero(); updateCounts(); sizeTimers(); }
 
-  /* ---------- Line / area chart -----------------------------------------
-     <figure class="linechart" data-values="12,18,..." data-labels="Jan,Feb,..."
-             role="img" aria-label="..."></figure>
-  ----------------------------------------------------------------------- */
-  function renderLineChart(fig) {
-    const values = fig.dataset.values.split(',').map(Number);
-    const labels = (fig.dataset.labels || '').split(',').filter(Boolean);
-    const W = 640, H = 240, pad = { l: 8, r: 8, t: 16, b: 12 };
-    const max = Math.max.apply(null, values) * 1.12;
-    const min = Math.min.apply(null, values.concat(0));
-    const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
-    const x = function (i) { return pad.l + (i / (values.length - 1)) * iw; };
-    const y = function (v) { return pad.t + ih - ((v - min) / (max - min)) * ih; };
+function goalItemHTML(g) {
+  const u = urgency(g);
+  const badge = !g.deadline ? '<span class="badge badge--neutral">no deadline</span>'
+    : '<span class="badge badge--' + u + '">' + esc(fmtLeft(new Date(g.deadline) - Date.now())) + "</span>";
+  const timer = g.deadline ? '<div class="timer"><div class="timer__track"><div class="timer__fill" style="width:' + (progressOf(g) * 100).toFixed(1) + '%"></div></div><div class="timer__labels"><span>' + esc(fmtWhen(g.createdAt)) + '</span><span>' + esc(fmtWhen(g.deadline)) + "</span></div></div>" : "";
+  const toToday = g.type === "short" && !g.done ? '<button class="iconbtn" title="Add to today" data-act="totoday" data-id="' + g.id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>' : "";
+  return '<li class="item">' +
+    '<div class="item__top">' +
+      '<div class="item__title ' + (g.done ? "is-done" : "") + '">' + esc(g.title) + "</div>" +
+      '<div class="item__actions">' + badge +
+        '<button class="iconbtn" title="Mark done" data-act="done" data-id="' + g.id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>' +
+        toToday +
+        '<button class="iconbtn iconbtn--danger" title="Delete" data-act="del" data-id="' + g.id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>' +
+      "</div>" +
+    "</div>" + timer + "</li>";
+}
 
-    const stroke = cssVar('--color-secondary');
-    const fill = cssVar('--color-primary');
-    fig.innerHTML = '';
-    const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'none', class: 'chart-svg' });
+function renderGoals(type) {
+  const list = $(type + "-list"), empty = $(type + "-empty");
+  const items = state.goals.filter((g) => g.type === type)
+    .sort((a, b) => (a.done - b.done) || ((a.deadline ? new Date(a.deadline) : Infinity) - (b.deadline ? new Date(b.deadline) : Infinity)));
+  list.innerHTML = items.map(goalItemHTML).join("");
+  empty.style.display = items.length ? "none" : "";
+  list.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", () => {
+    const id = b.dataset.id;
+    if (b.dataset.act === "done") toggleGoal(id);
+    else if (b.dataset.act === "del") deleteGoal(id);
+    else if (b.dataset.act === "totoday") addToToday(id);
+  }));
+}
 
-    for (let g = 0; g <= 3; g++) {
-      const gy = pad.t + (ih / 3) * g;
-      svg.appendChild(svgEl('line', { x1: pad.l, x2: W - pad.r, y1: gy, y2: gy, class: 'grid' }));
-    }
-    const id = 'g' + Math.round(values[0] * 97 + values.length);
-    const defs = svgEl('defs', {});
-    const grad = svgEl('linearGradient', { id: id, x1: 0, y1: 0, x2: 0, y2: 1 });
-    grad.appendChild(svgEl('stop', { offset: '0%', 'stop-color': fill, 'stop-opacity': '.28' }));
-    grad.appendChild(svgEl('stop', { offset: '100%', 'stop-color': fill, 'stop-opacity': '0' }));
-    defs.appendChild(grad); svg.appendChild(defs);
+function renderDaily() {
+  const list = $("daily-list"), empty = $("daily-empty");
+  $("daily-date").textContent = new Date().toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+  const items = state.schedule.filter((s) => s.day === todayKey()).sort((a, b) => (a.done - b.done) || new Date(a.createdAt) - new Date(b.createdAt));
+  list.innerHTML = items.map((it) =>
+    '<li class="row">' +
+      '<input class="check" type="checkbox" ' + (it.done ? "checked" : "") + ' data-act="dcheck" data-id="' + it.id + '" aria-label="Done" />' +
+      '<span class="row__text ' + (it.done ? "is-done" : "") + '">' + esc(it.text) + (it.fromGoalId ? ' <span class="badge badge--accent">goal</span>' : "") + "</span>" +
+      '<button class="iconbtn iconbtn--danger" title="Remove" data-act="ddel" data-id="' + it.id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>' +
+    "</li>").join("");
+  empty.style.display = items.length ? "none" : "";
+  list.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", () => {
+    if (b.dataset.act === "dcheck") toggleDaily(b.dataset.id);
+    else if (b.dataset.act === "ddel") deleteDaily(b.dataset.id);
+  }));
+}
 
-    let d = '', area = '';
-    values.forEach(function (v, i) {
-      const px = x(i), py = y(v);
-      d += (i ? 'L' : 'M') + px.toFixed(1) + ' ' + py.toFixed(1) + ' ';
-      area += (i ? 'L' : 'M') + px.toFixed(1) + ' ' + py.toFixed(1) + ' ';
-    });
-    area += 'L' + x(values.length - 1).toFixed(1) + ' ' + (pad.t + ih) + ' L' + x(0) + ' ' + (pad.t + ih) + ' Z';
+let spotlightId = null;
+function renderIdeas() {
+  const list = $("ideas-list"), empty = $("ideas-empty");
+  const items = state.ideas.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  list.innerHTML = items.map((it) =>
+    '<li class="idea ' + (it.id === spotlightId ? "idea--spotlight" : "") + '">' +
+      "<div><div class=\"idea__text\">" + esc(it.text) + "</div>" +
+      '<div class="idea__time">' + esc(fmtWhen(it.createdAt)) + "</div></div>" +
+      '<button class="iconbtn iconbtn--danger" title="Delete" data-act="idel" data-id="' + it.id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>' +
+    "</li>").join("");
+  empty.style.display = items.length ? "none" : "";
+  list.querySelectorAll("[data-act='idel']").forEach((b) => b.addEventListener("click", () => deleteIdea(b.dataset.id)));
+}
 
-    svg.appendChild(svgEl('path', { d: area, fill: 'url(#' + id + ')', stroke: 'none' }));
-    const line = svgEl('path', { d: d.trim(), fill: 'none', stroke: stroke, 'stroke-width': 2.5, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', class: 'chart-line' });
-    svg.appendChild(line);
+function renderHero() {
+  const hero = $("hero"), body = $("hero-body"), emptyEl = $("hero-empty");
+  const upcoming = state.goals
+    .filter((g) => g.deadline && !g.done)
+    .sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+  const g = upcoming[0];
+  if (!g) { body.hidden = true; emptyEl.hidden = false; hero.classList.remove("is-danger"); return; }
+  emptyEl.hidden = true; body.hidden = false;
+  const left = new Date(g.deadline) - Date.now();
+  $("hero-title").textContent = g.title;
+  $("hero-due").textContent = (g.type === "long" ? "Long-term" : "Short-term") + " · due " + fmtWhen(g.deadline);
+  $("hero-countdown").textContent = left <= 0 ? "overdue" : fmtCountdown(left) + " left";
+  $("hero-fill").style.width = (progressOf(g) * 100).toFixed(1) + "%";
+  $("hero-start").textContent = fmtWhen(g.createdAt);
+  $("hero-end").textContent = fmtWhen(g.deadline);
+  hero.classList.toggle("is-danger", urgency(g) === "red");
+}
 
-    values.forEach(function (v, i) {
-      const dot = svgEl('circle', { cx: x(i), cy: y(v), r: 4, class: 'chart-dot', fill: stroke });
-      const title = svgEl('title', {});
-      title.textContent = (labels[i] || ('#' + (i + 1))) + ': ' + v.toLocaleString();
-      dot.appendChild(title);
-      svg.appendChild(dot);
-    });
+function updateCounts() {
+  $("count-long").textContent = state.goals.filter((g) => g.type === "long" && !g.done).length;
+  $("count-short").textContent = state.goals.filter((g) => g.type === "short" && !g.done).length;
+  $("count-daily").textContent = state.schedule.filter((s) => s.day === todayKey() && !s.done).length;
+}
 
-    if (!reduceMotion) {
-      const len = line.getTotalLength();
-      line.style.strokeDasharray = len; line.style.strokeDashoffset = len;
-      line.getBoundingClientRect();
-      line.style.transition = 'stroke-dashoffset 900ms ease-out';
-      line.style.strokeDashoffset = '0';
-    }
-    fig.appendChild(svg);
+/* ---------- tabs ---------- */
+const tabs = Array.from(document.querySelectorAll(".tab"));
+const panels = Array.from(document.querySelectorAll(".panel"));
+function selectTab(name) {
+  tabs.forEach((t) => { const on = t.dataset.tab === name; t.classList.toggle("is-active", on); t.setAttribute("aria-selected", on ? "true" : "false"); });
+  panels.forEach((p) => { const on = p.dataset.panel === name; p.classList.toggle("is-active", on); p.hidden = !on; });
+  sizeTimers();
+}
+tabs.forEach((t) => t.addEventListener("click", () => selectTab(t.dataset.tab)));
 
-    if (labels.length) {
-      const cap = document.createElement('div');
-      cap.className = 'chart-xlabels';
-      labels.forEach(function (l) { const s = document.createElement('span'); s.textContent = l; cap.appendChild(s); });
-      fig.appendChild(cap);
-    }
-  }
+/* ---------- forms ---------- */
+$("form-long").addEventListener("submit", (e) => { e.preventDefault(); const t = $("long-title"); if (!t.value.trim()) return; addGoal("long", t.value, $("long-deadline").value ? new Date($("long-deadline").value).toISOString() : null); t.value = ""; $("long-deadline").value = ""; });
+$("form-short").addEventListener("submit", (e) => { e.preventDefault(); const t = $("short-title"); if (!t.value.trim()) return; addGoal("short", t.value, $("short-deadline").value ? new Date($("short-deadline").value).toISOString() : null); t.value = ""; $("short-deadline").value = ""; });
+$("form-daily").addEventListener("submit", (e) => { e.preventDefault(); const t = $("daily-text"); if (!t.value.trim()) return; addDaily(t.value); t.value = ""; });
+$("form-idea").addEventListener("submit", (e) => { e.preventDefault(); const t = $("idea-text"); if (!t.value.trim()) return; addIdea(t.value); t.value = ""; });
+$("surprise").addEventListener("click", () => {
+  if (!state.ideas.length) return;
+  spotlightId = state.ideas[Math.floor(Math.random() * state.ideas.length)].id;
+  renderIdeas();
+  const el = document.querySelector(".idea--spotlight");
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+});
 
-  /* ---------- Sparkline (KPI cards) ----------------------------------- */
-  function renderSpark(el) {
-    const values = el.dataset.spark.split(',').map(Number);
-    const W = 120, H = 36;
-    const max = Math.max.apply(null, values), min = Math.min.apply(null, values);
-    const x = function (i) { return (i / (values.length - 1)) * W; };
-    const y = function (v) { return H - 2 - ((v - min) / (max - min || 1)) * (H - 4); };
-    const up = values[values.length - 1] >= values[0];
-    const color = up ? cssVar('--color-success') : cssVar('--color-destructive');
-    let d = '';
-    values.forEach(function (v, i) { d += (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1) + ' '; });
-    el.innerHTML = '';
-    const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'spark-svg', 'aria-hidden': 'true' });
-    svg.appendChild(svgEl('path', { d: d.trim(), fill: 'none', stroke: color, 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
-    el.appendChild(svg);
-  }
+/* ---------- live clock + ticking countdowns ---------- */
+const clockEl = $("clock"), tzEl = $("tz");
+const tzName = Intl.DateTimeFormat().resolvedOptions().timeZone || "local";
+if (tzEl) tzEl.textContent = tzName.replace(/_/g, " ");
+function tick() {
+  const now = new Date();
+  clockEl.firstChild.nodeValue = now.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" }) + "  ·  " + now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + "  ";
+  renderHero();              // keeps the hero countdown + danger flash live
+}
 
-  /* ---------- Count-up KPI numbers ------------------------------------ */
-  function countUp(el) {
-    const target = parseFloat(el.dataset.count);
-    const prefix = el.dataset.prefix || '', suffix = el.dataset.suffix || '';
-    const decimals = (el.dataset.decimals | 0);
-    const fmt = function (n) { return prefix + n.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + suffix; };
-    if (reduceMotion) { el.textContent = fmt(target); return; }
-    const dur = 1100; let start = null;
-    function step(ts) {
-      if (!start) start = ts;
-      const p = Math.min((ts - start) / dur, 1);
-      el.textContent = fmt(target * (1 - Math.pow(1 - p, 3)));
-      if (p < 1) requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
-  }
-
-  /* ---------- Sortable tables ---------------------------------------- */
-  function wireSortableTables() {
-    document.querySelectorAll('table[data-sortable] thead th[data-sort]').forEach(function (th) {
-      th.tabIndex = 0; th.setAttribute('role', 'button'); th.setAttribute('aria-sort', 'none');
-      function sort() {
-        const table = th.closest('table');
-        const tbody = table.querySelector('tbody');
-        const col = Array.from(th.parentNode.children).indexOf(th);
-        const dir = th.getAttribute('aria-sort') === 'ascending' ? -1 : 1;
-        table.querySelectorAll('thead th').forEach(function (h) { h.setAttribute('aria-sort', 'none'); });
-        th.setAttribute('aria-sort', dir === 1 ? 'ascending' : 'descending');
-        const numeric = th.dataset.sort === 'number';
-        Array.from(tbody.querySelectorAll('tr')).sort(function (a, b) {
-          let av = a.children[col].dataset.value ?? a.children[col].textContent.trim();
-          let bv = b.children[col].dataset.value ?? b.children[col].textContent.trim();
-          if (numeric) { av = parseFloat(String(av).replace(/[^0-9.-]/g, '')); bv = parseFloat(String(bv).replace(/[^0-9.-]/g, '')); return (av - bv) * dir; }
-          return String(av).localeCompare(String(bv)) * dir;
-        }).forEach(function (r) { tbody.appendChild(r); });
-      }
-      th.addEventListener('click', sort);
-      th.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sort(); } });
-    });
-  }
-
-  function renderAllCharts() {
-    document.querySelectorAll('.linechart').forEach(renderLineChart);
-    document.querySelectorAll('[data-spark]').forEach(renderSpark);
-  }
-
-  /* ---------- Boot ---------- */
-  function boot() {
-    renderAllCharts();
-    document.querySelectorAll('[data-count]').forEach(countUp);
-    wireSortableTables();
-    const clock = document.getElementById('live-clock');
-    if (clock) {
-      const tick = function () { clock.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }); };
-      tick(); setInterval(tick, 1000);
-    }
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
-  else boot();
-})();
+/* ---------- boot ---------- */
+window.addEventListener("resize", sizeTimers);
+loadLocal();
+renderAll();
+tick();
+setInterval(tick, 1000);
+initSupabase();              // async: pulls + enables sync when tables exist
