@@ -289,6 +289,71 @@ textarea.input { resize: vertical; min-height: 88px; line-height: 1.5; }
 .empty { font-family: var(--font-serif); font-style: italic; font-size: var(--text-lg); color: var(--muted); text-align: center; padding: var(--space-8) var(--space-4); border: 1px dashed var(--glass-border); border-radius: var(--radius-lg); }
 .section-label { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 
+/* ============================================================
+   GOAL STAT PILLS — each goal is a colored pill with a progress
+   ring (time elapsed → deadline), big value (time left), and the
+   title as its label. Per-goal --c color, variant, and animation.
+   Ported from button-lab.html.
+   ============================================================ */
+.panel[data-panel="long"] .list,
+.panel[data-panel="short"] .list { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-4); }
+
+.gp {
+  --c: var(--accent);
+  position: relative; display: flex; align-items: center; gap: var(--space-4);
+  padding: 16px 18px 16px 16px; border-radius: 26px; list-style: none;
+  background: #0c0d12; border: 1px solid rgba(255,255,255,.07);
+  box-shadow: 0 12px 34px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05);
+  transition: transform var(--duration) var(--ease), box-shadow var(--duration) var(--ease), border-color var(--duration) var(--ease);
+  overflow: hidden;
+}
+.gp:hover { transform: translateY(-3px); box-shadow: 0 20px 46px rgba(0,0,0,.55); }
+.gp.is-done { opacity: .55; }
+
+.ring-wrap { position: relative; width: 56px; height: 56px; flex: none; }
+.ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+.ring-bg { fill: none; stroke: rgba(255,255,255,.09); stroke-width: 6; }
+.ring-fg {
+  fill: none; stroke: var(--c); stroke-width: 6; stroke-linecap: round;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--c) 70%, transparent));
+  transition: stroke-dashoffset 950ms var(--ease-premium);
+}
+
+.gp-meta { display: flex; flex-direction: column; line-height: 1.1; min-width: 0; flex: 1; }
+.gp-val { font-family: var(--font-mono); font-size: 26px; font-weight: 600; letter-spacing: -1px; color: #fff; }
+.gp-lab { font-family: var(--font-serif); font-style: italic; font-size: 15px; color: var(--fg); margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gp-due { font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 5px; }
+.gp.is-overdue .gp-due { color: var(--red); }
+
+.gp-actions { position: absolute; top: 10px; right: 12px; display: flex; gap: 5px; opacity: 0; transition: opacity var(--duration) var(--ease); }
+.gp:hover .gp-actions, .gp:focus-within .gp-actions { opacity: 1; }
+.gp-actions .iconbtn { width: 30px; height: 30px; }
+.gp-actions .iconbtn svg { width: 14px; height: 14px; }
+
+/* ---- variants (match the screenshot: classic / frosted / neumorphic / outline / conic halo / neon) ---- */
+.gp.v02 { background: rgba(255,255,255,.06); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,.14); }
+.gp.v03 { background: #141518; border: none; box-shadow: 8px 8px 18px rgba(0,0,0,.6), -7px -7px 16px rgba(255,255,255,.04); }
+.gp.v03 .ring-bg { stroke: rgba(0,0,0,.5); }
+.gp.v04 { background: transparent; border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); box-shadow: none; }
+.gp.v05 .ring-wrap::before { content: ""; position: absolute; inset: -3px; border-radius: 50%; background: conic-gradient(from -90deg, var(--c), transparent 70%); opacity: .55; filter: blur(5px); }
+.gp.v06 { background: #08090b; border: 1px solid color-mix(in srgb, var(--c) 32%, transparent); box-shadow: 0 0 26px color-mix(in srgb, var(--c) 26%, transparent), inset 0 0 18px color-mix(in srgb, var(--c) 8%, transparent); }
+.gp.v06 .gp-val { text-shadow: 0 0 14px color-mix(in srgb, var(--c) 60%, transparent); }
+
+/* ---- per-goal continuous animations ---- */
+@keyframes gpBreathe { 0%,100% { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--c) 45%, transparent)); } 50% { filter: drop-shadow(0 0 14px color-mix(in srgb, var(--c) 92%, transparent)); } }
+.gp-breathe .ring-fg { animation: gpBreathe 2.8s ease-in-out infinite; }
+@keyframes gpPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.015); } }
+.gp-pulse { animation: gpPulse 3.2s var(--ease) infinite; }
+@keyframes gpShimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+.gp-shimmer::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.10) 50%, transparent 65%); background-size: 200% 100%; animation: gpShimmer 3.6s linear infinite; }
+@keyframes gpSpin { to { transform: rotate(360deg); } }
+.gp-spin .ring-wrap::before { animation: gpSpin 4.5s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gp-breathe .ring-fg, .gp-pulse, .gp-shimmer::after, .gp-spin .ring-wrap::before { animation: none !important; }
+  .ring-fg { transition: none; }
+}
+
 /* ---------- Chat head + Input-data button ---------- */
 .chat__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .chat__name { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
@@ -336,6 +401,7 @@ textarea.input { resize: vertical; min-height: 88px; line-height: 1.5; }
   .wrap { padding: var(--space-6) var(--space-4) var(--space-12); }
   .hero { padding: var(--space-6); }
   .hero__title, .greeter__hi { font-size: var(--text-2xl); }
+  .panel[data-panel="long"] .list, .panel[data-panel="short"] .list { grid-template-columns: 1fr; }
   .tabs { grid-template-columns: 1fr; }
   .datetime { flex-basis: 100%; }
   .clock { display: none; }

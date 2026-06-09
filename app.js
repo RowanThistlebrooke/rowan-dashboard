@@ -21,6 +21,12 @@ const $ = (id) => document.getElementById(id);
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "id-" + Date.now() + "-" + Math.random().toString(16).slice(2));
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const HOUR = 3600e3, DAY = 86400e3, MIN = 60e3;
+const CIRC = +(2 * Math.PI * 23).toFixed(2);   // ring circumference (r=23)
+function hashStr(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
+const GP_COLORS = ["#6EE7B7", "#F472B6", "#A882FF", "#60A5FA", "#FBBF24", "#FB7185"];   // mint pink purple blue amber red
+const GP_VARIANTS = ["v01", "v02", "v03", "v04", "v05", "v06"];                          // classic frosted neumorphic outline conic neon
+const GP_ANIMS = ["gp-breathe", "gp-shimmer", "gp-pulse", ""];
+function fmtBig(ms) { if (ms <= 0) return "0"; if (ms < HOUR) return Math.max(1, Math.round(ms / MIN)) + "m"; if (ms < DAY) return Math.round(ms / HOUR) + "h"; return Math.round(ms / DAY) + "d"; }
 const todayKey = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
 
 /* ---------- state ---------- */
@@ -171,21 +177,37 @@ function progressOf(g) {
 /* ---------- rendering ---------- */
 function renderAll() { renderGoals("long"); renderGoals("short"); renderDaily(); renderIdeas(); renderHero(); updateCounts(); sizeTimers(); }
 
+// Each goal renders as a stat pill (see button-lab): progress ring (time
+// elapsed → deadline), big value = time left, label = title. Color, variant,
+// and animation are derived from a stable hash of the goal id so they don't
+// jump around between renders.
 function goalItemHTML(g) {
-  const u = urgency(g);
-  const badge = !g.deadline ? '<span class="badge badge--neutral">no deadline</span>'
-    : '<span class="badge badge--' + u + '">' + esc(fmtLeft(new Date(g.deadline) - Date.now())) + "</span>";
-  const timer = g.deadline ? '<div class="timer"><div class="timer__track"><div class="timer__fill" style="width:' + (progressOf(g) * 100).toFixed(1) + '%"></div></div><div class="timer__labels"><span>' + esc(fmtWhen(g.createdAt)) + '</span><span>' + esc(fmtWhen(g.deadline)) + "</span></div></div>" : "";
-  const toToday = g.type === "short" && !g.done ? '<button class="iconbtn" title="Add to today" data-act="totoday" data-id="' + g.id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>' : "";
-  return '<li class="item">' +
-    '<div class="item__top">' +
-      '<div class="item__title ' + (g.done ? "is-done" : "") + '">' + esc(g.title) + "</div>" +
-      '<div class="item__actions">' + badge +
-        '<button class="iconbtn" title="Mark done" data-act="done" data-id="' + g.id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>' +
-        toToday +
-        '<button class="iconbtn iconbtn--danger" title="Delete" data-act="del" data-id="' + g.id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>' +
-      "</div>" +
-    "</div>" + timer + "</li>";
+  const h = hashStr(g.id);
+  const color = GP_COLORS[h % GP_COLORS.length];
+  const variant = GP_VARIANTS[Math.floor(h / 7) % GP_VARIANTS.length];
+  let anim = GP_ANIMS[Math.floor(h / 53) % GP_ANIMS.length];
+  if (variant === "v05") anim = (anim + " gp-spin").trim();   // conic halo only spins meaningfully
+
+  const left = g.deadline ? new Date(g.deadline) - Date.now() : null;
+  const prog = g.done ? 1 : (g.deadline ? progressOf(g) : 0);
+  const offset = (CIRC * (1 - prog)).toFixed(1);
+  const big = g.done ? "✓" : (g.deadline ? fmtBig(left) : "∞");
+  const overdue = g.deadline && left <= 0 && !g.done;
+  const due = !g.deadline ? "no deadline" : (overdue ? "overdue" : "due " + fmtWhen(g.deadline));
+
+  const ic = (act, danger, title, path) => '<button class="iconbtn' + (danger ? " iconbtn--danger" : "") + '" title="' + title + '" data-act="' + act + '" data-id="' + g.id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + path + "</svg></button>";
+  const toToday = g.type === "short" && !g.done ? ic("totoday", false, "Add to today", '<path d="M12 5v14M5 12h14"/>') : "";
+
+  return '<li class="gp ' + variant + (anim ? " " + anim : "") + (g.done ? " is-done" : "") + (overdue ? " is-overdue" : "") + '" style="--c:' + color + '">' +
+    '<div class="ring-wrap"><svg viewBox="0 0 52 52">' +
+      '<circle class="ring-bg" cx="26" cy="26" r="23"/>' +
+      '<circle class="ring-fg" cx="26" cy="26" r="23" data-offset="' + offset + '" style="stroke-dasharray:' + CIRC + ';stroke-dashoffset:' + CIRC + '"/>' +
+    "</svg></div>" +
+    '<div class="gp-meta"><span class="gp-val">' + esc(big) + '</span><span class="gp-lab">' + esc(g.title) + '</span><span class="gp-due">' + esc(due) + "</span></div>" +
+    '<div class="gp-actions">' +
+      ic("done", false, "Mark done", '<path d="M20 6 9 17l-5-5"/>') + toToday +
+      ic("del", true, "Delete", '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>') +
+    "</div></li>";
 }
 
 function renderGoals(type) {
@@ -194,7 +216,10 @@ function renderGoals(type) {
     .sort((a, b) => (a.done - b.done) || ((a.deadline ? new Date(a.deadline) : Infinity) - (b.deadline ? new Date(b.deadline) : Infinity)));
   list.innerHTML = items.map(goalItemHTML).join("");
   empty.style.display = items.length ? "none" : "";
-  list.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", () => {
+  // sweep the rings in from empty to their target on the next frame
+  requestAnimationFrame(() => list.querySelectorAll(".ring-fg").forEach((c) => { const o = c.getAttribute("data-offset"); if (o != null) c.style.strokeDashoffset = o; }));
+  list.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", (e) => {
+    e.stopPropagation();
     const id = b.dataset.id;
     if (b.dataset.act === "done") toggleGoal(id);
     else if (b.dataset.act === "del") deleteGoal(id);
