@@ -300,6 +300,7 @@ textarea.input { resize: vertical; min-height: 88px; line-height: 1.5; }
   background: rgba(3,6,12,.6); backdrop-filter: blur(6px);
   animation: fadeIn 200ms var(--ease) both;
 }
+.modal-overlay[hidden] { display: none; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .modal {
   width: min(580px, 100%); max-height: 86vh; overflow-y: auto;

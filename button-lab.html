@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>button-lab</title>
+<!--
+==============================================================================
+  BUTTON LAB  ·  a visual playground for the "stat pill" button
+==============================================================================
+
+  THE THING
+  ---------
+  A pill-shaped stat button: a circular progress ring on the left, a big
+  metric value + small label on the right, sitting in a dark glassy pill.
+  (See the reference screenshot: 67% / Sales by Day, $234 / Sales by Day.)
+
+  WHY THIS LAB EXISTS
+  -------------------
+  To compare 20 distinct visual takes on that one button side by side, tune
+  their look live (color, animation, speed, layout), then copy the exact CSS
+  for the one you like straight into your real project.
+
+  WORKFLOW
+  --------
+  1. Open this file in a browser (served on localhost, or just double-click).
+  2. Drive everything from the sticky top bar — the controls apply to every
+     card at once. Each card also has its own color dot for fine tuning.
+  3. When a card looks right, hit its "copy" button. A self-contained
+     HTML + <style> snippet lands on your clipboard — paste it anywhere.
+  4. Want changes? Tell Claude e.g. "card 7, make the ring thicker and add a
+     gradient", Claude edits THIS file, you refresh the browser.
+
+  EVERYTHING lives in this one file: one <style> block, one <script>.
+  No build step, no dependencies. Fonts come from Google Fonts only.
+==============================================================================
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* ---------- tokens ---------- */
+  :root{
+    --bg:#070708;
+    --ink:#f4f5f6;
+    --muted:#8b8f96;
+    --faint:#54585f;
+    --accent:#6EE7B7;
+    --hair:rgba(255,255,255,.09);
+    --hair-strong:rgba(255,255,255,.16);
+    --ease:cubic-bezier(.16,1,.3,1);
+    --speed:1; /* global animation speed multiplier driver */
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    position:relative;
+    overflow-x:hidden;
+  }
+  /* ambient radial glows */
+  body::before,body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  }
+  body::before{
+    background:radial-gradient(640px 480px at 16% -8%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%);
+  }
+  body::after{
+    background:radial-gradient(720px 540px at 100% 8%, rgba(120,140,255,.10), transparent 62%);
+  }
+
+  /* ---------- top bar ---------- */
+  .bar{
+    position:sticky;top:0;z-index:50;
+    backdrop-filter:blur(18px) saturate(140%);
+    -webkit-backdrop-filter:blur(18px) saturate(140%);
+    background:rgba(10,10,12,.62);
+    border-bottom:1px solid var(--hair);
+  }
+  .bar-inner{
+    max-width:1500px;margin:0 auto;padding:14px 26px;
+    display:flex;align-items:center;gap:26px;flex-wrap:wrap;
+  }
+  .brand{display:flex;flex-direction:column;line-height:1;margin-right:6px;}
+  .brand h1{
+    font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;
+    font-size:25px;margin:0;letter-spacing:.2px;
+  }
+  .brand span{
+    font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);
+    letter-spacing:.16em;text-transform:uppercase;margin-top:5px;
+  }
+
+  .ctrl{display:flex;flex-direction:column;gap:7px;}
+  .ctrl > label{
+    font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--faint);
+  }
+  .row{display:flex;align-items:center;gap:8px;}
+
+  .swatches{display:flex;gap:7px;align-items:center;}
+  .sw{
+    width:20px;height:20px;border-radius:50%;border:1px solid var(--hair-strong);
+    cursor:pointer;padding:0;transition:transform .25s var(--ease);
+    position:relative;
+  }
+  .sw:hover{transform:scale(1.16);}
+  .sw.active{box-shadow:0 0 0 2px var(--bg),0 0 0 3.5px currentColor;}
+  .sw-pick{
+    width:22px;height:22px;border-radius:50%;overflow:hidden;border:1px dashed var(--hair-strong);
+    cursor:pointer;padding:0;background:none;position:relative;
+    display:grid;place-items:center;
+  }
+  .sw-pick::after{content:"+";color:var(--muted);font-size:14px;line-height:1;}
+  .sw-pick input{position:absolute;inset:-6px;opacity:0;cursor:pointer;}
+
+  select,input[type=range]{accent-color:var(--accent);}
+  select{
+    appearance:none;-webkit-appearance:none;
+    background:rgba(255,255,255,.04);color:var(--ink);
+    border:1px solid var(--hair);border-radius:9px;
+    padding:7px 30px 7px 11px;font-family:'Inter';font-size:12.5px;cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238b8f96' stroke-width='1.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 11px center;
+    transition:border-color .25s var(--ease);min-width:150px;
+  }
+  select:hover{border-color:var(--hair-strong);}
+
+  .slide{display:flex;flex-direction:column;gap:6px;min-width:148px;}
+  .slide .row{justify-content:space-between;}
+  .slide b{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);font-weight:500;}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:3px;
+    background:rgba(255,255,255,.12);outline:none;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+    background:var(--accent);cursor:pointer;border:2px solid var(--bg);
+    box-shadow:0 0 0 1px var(--accent);transition:transform .2s var(--ease);
+  }
+  input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2);}
+
+  .toggles{display:flex;gap:16px;flex-wrap:wrap;}
+  .tg{display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:var(--muted);user-select:none;}
+  .tg input{display:none;}
+  .tg .box{
+    width:30px;height:17px;border-radius:20px;background:rgba(255,255,255,.1);
+    border:1px solid var(--hair);position:relative;transition:background .25s var(--ease);flex:none;
+  }
+  .tg .box::after{
+    content:"";position:absolute;top:1.5px;left:1.5px;width:12px;height:12px;border-radius:50%;
+    background:var(--muted);transition:transform .28s var(--ease),background .25s var(--ease);
+  }
+  .tg input:checked + .box{background:color-mix(in srgb,var(--accent) 32%,transparent);border-color:transparent;}
+  .tg input:checked + .box::after{transform:translateX(13px);background:var(--accent);}
+  .tg input:checked ~ .txt{color:var(--ink);}
+
+  .spacer{flex:1;}
+  .replay-all{
+    display:flex;align-items:center;gap:7px;cursor:pointer;
+    background:rgba(255,255,255,.04);border:1px solid var(--hair);color:var(--ink);
+    padding:8px 14px;border-radius:10px;font-size:12.5px;font-family:'Inter';
+    transition:border-color .25s var(--ease),background .25s var(--ease);
+  }
+  .replay-all:hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent);}
+
+  /* ---------- grid ---------- */
+  .grid{
+    position:relative;z-index:1;
+    max-width:1500px;margin:0 auto;padding:30px 26px 80px;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:22px;
+  }
+
+  .card{
+    position:relative;border:1px solid var(--hair);border-radius:20px;
+    background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.01));
+    padding:26px 24px 18px;min-height:210px;
+    display:flex;flex-direction:column;
+    transition:border-color .3s var(--ease),transform .3s var(--ease);
+  }
+  .card:hover{border-color:var(--hair-strong);}
+
+  .tag{
+    position:absolute;top:14px;left:16px;
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.06em;
+    color:var(--faint);
+  }
+  .tag b{color:var(--muted);font-weight:500;}
+
+  .card-tools{position:absolute;top:11px;right:12px;display:flex;gap:5px;align-items:center;}
+  .tool{
+    width:27px;height:27px;border-radius:8px;display:grid;place-items:center;cursor:pointer;
+    background:rgba(255,255,255,.03);border:1px solid var(--hair);color:var(--muted);
+    transition:all .22s var(--ease);padding:0;
+  }
+  .tool:hover{color:var(--ink);border-color:var(--hair-strong);background:rgba(255,255,255,.07);}
+  .tool svg{width:13px;height:13px;}
+  .tool.dot{position:relative;overflow:hidden;}
+  .tool.dot i{width:13px;height:13px;border-radius:50%;background:var(--cc,var(--accent));display:block;}
+  .tool.dot input{position:absolute;inset:-8px;opacity:0;cursor:pointer;}
+  .tool.copied{color:var(--accent);border-color:var(--accent);}
+
+  /* card body — the stage where the pill lives */
+  .stage{flex:1;display:flex;align-items:center;justify-content:center;padding:26px 4px 8px;
+    perspective:1400px;position:relative;}
+
+  .vname{
+    font-family:'Instrument Serif',serif;font-style:italic;font-size:17px;
+    color:var(--muted);text-align:center;margin-top:auto;padding-top:6px;
+  }
+
+  /* =========================================================
+     THE PILL  ·  base structure shared by all 20 variants
+     each variant adds a .v-XX class that restyles it
+     ========================================================= */
+  .pill{
+    --c:var(--accent);
+    --ring:200; /* circumference of ring path, set by js */
+    display:flex;align-items:center;gap:18px;
+    padding:14px 26px 14px 16px;border-radius:999px;
+    background:#0c0d0f;border:1px solid rgba(255,255,255,.07);
+    box-shadow:0 12px 34px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05);
+    position:relative;will-change:transform,opacity,filter;
+  }
+  .ring-wrap{position:relative;width:52px;height:52px;flex:none;}
+  .ring-wrap svg{width:100%;height:100%;transform:rotate(-90deg);overflow:visible;}
+  .ring-bg{fill:none;stroke:rgba(255,255,255,.09);stroke-width:6;}
+  .ring-fg{
+    fill:none;stroke:var(--c);stroke-width:6;stroke-linecap:round;
+    stroke-dasharray:var(--ring);stroke-dashoffset:var(--ring);
+    filter:drop-shadow(0 0 5px color-mix(in srgb,var(--c) 70%,transparent));
+  }
+  .pill.noglow .ring-fg{filter:none;}
+  .pill.noglow{box-shadow:0 8px 22px rgba(0,0,0,.4);}
+  .ring-core{
+    position:absolute;inset:0;display:grid;place-items:center;
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--c);font-weight:500;opacity:0;
+  }
+  .pill.showcore .ring-core{opacity:1;}
+  .meta{display:flex;flex-direction:column;line-height:1.05;}
+  .val{font-size:27px;font-weight:600;letter-spacing:-.5px;color:#fff;font-variant-numeric:tabular-nums;}
+  .pill.mononum .val{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:-1px;}
+  .lab{font-size:12.5px;color:var(--muted);margin-top:5px;}
+  .pill.nolabel .lab{display:none;}
+
+  /* =========================================================
+     FLIP  ·  tap a pill to rotate it and reveal the goal
+     ========================================================= */
+  .flip{position:relative;display:inline-block;cursor:pointer;}
+  .flipper{
+    position:relative;transform-style:preserve-3d;
+    transition:transform .85s var(--ease);
+    will-change:transform;
+  }
+  .flip.flipped .flipper{transform:rotateY(180deg);}
+  /* The two faces are identical-size boxes. backface-visibility hides whichever
+     side faces away, so the rotation is fully visible (no opacity blink) and
+     nothing behind can show through — both faces are the same opaque pill. */
+  .face{backface-visibility:hidden;-webkit-backface-visibility:hidden;}
+  .face.front{position:absolute;inset:0;display:flex;}      /* fills the box the back defines */
+  .face.front .pill{width:100%;height:100%;}
+  .face.back{position:relative;transform:rotateY(180deg);}  /* in flow → defines the box size */
+
+  /* tiny "tap to flip" hint */
+  .flip-hint{
+    position:absolute;bottom:-2px;right:8px;z-index:3;
+    font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;
+    color:var(--faint);opacity:0;transition:opacity .3s var(--ease);pointer-events:none;
+    text-transform:uppercase;
+  }
+  .stage:hover .flip-hint{opacity:1;}
+  .flip.flipped ~ .flip-hint,.flip.flipped .flip-hint{opacity:0;}
+
+  /* goal content lives INSIDE a back-face pill that reuses the variant styling,
+     so the border / background / shadow always match the front of that card. */
+  .goal-icon{
+    width:44px;height:44px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:19px;
+    background:color-mix(in srgb,var(--c) 18%,transparent);
+    border:1px solid color-mix(in srgb,var(--c) 40%,transparent);
+    box-shadow:0 0 14px color-mix(in srgb,var(--c) 28%,transparent);
+  }
+  .goal-meta{display:flex;flex-direction:column;line-height:1.12;width:196px;flex:none;}
+  .goal-cat{
+    font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--c);margin-bottom:5px;display:flex;align-items:center;gap:6px;
+  }
+  .goal-cat::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--c);box-shadow:0 0 6px var(--c);}
+  .goal-text{
+    font-family:'Instrument Serif',serif;font-style:italic;font-size:15px;color:#fff;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .goal-due{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);margin-top:5px;}
+
+  /* ---- 20 VARIANTS ---- */
+  /* 01 classic (reference) */
+  .v01{}
+  /* 02 frosted glass */
+  .v02{background:rgba(255,255,255,.06);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.14);}
+  /* 03 neumorphic */
+  .v03{background:#141518;border:none;box-shadow:8px 8px 18px rgba(0,0,0,.6),-7px -7px 16px rgba(255,255,255,.04);}
+  .v03 .ring-bg{stroke:rgba(0,0,0,.5);}
+  /* 04 outline only */
+  .v04{background:transparent;border:1px solid color-mix(in srgb,var(--c) 45%,transparent);box-shadow:none;}
+  /* 05 conic gradient ring backdrop */
+  .v05{background:#0a0b0d;}
+  .v05 .ring-wrap::before{content:"";position:absolute;inset:-3px;border-radius:50%;
+    background:conic-gradient(from -90deg,var(--c),transparent 70%);opacity:.5;filter:blur(5px);}
+  /* 06 neon heavy */
+  .v06{background:#08090b;border:1px solid color-mix(in srgb,var(--c) 30%,transparent);
+    box-shadow:0 0 26px color-mix(in srgb,var(--c) 26%,transparent),inset 0 0 18px color-mix(in srgb,var(--c) 8%,transparent);}
+  .v06 .val{text-shadow:0 0 14px color-mix(in srgb,var(--c) 60%,transparent);}
+  /* 07 flat minimal */
+  .v07{background:#101113;box-shadow:none;border:1px solid var(--hair);}
+  .v07 .ring-fg{filter:none;}
+  /* 08 brutalist */
+  .v08{background:#0c0d0f;border:2px solid var(--c);border-radius:14px;box-shadow:5px 5px 0 var(--c);}
+  .v08 .val{font-family:'JetBrains Mono',monospace;}
+  /* 09 gradient fill body */
+  .v09{background:linear-gradient(120deg,color-mix(in srgb,var(--c) 22%,#0c0d0f),#0c0d0f 70%);border:1px solid color-mix(in srgb,var(--c) 22%,transparent);}
+  /* 10 mirrored (ring right) */
+  .v10{flex-direction:row-reverse;padding:14px 16px 14px 26px;}
+  .v10 .meta{text-align:right;align-items:flex-end;}
+  /* 11 thin ring big number */
+  .v11 .ring-bg,.v11 .ring-fg{stroke-width:3;}
+  .v11 .val{font-size:32px;}
+  /* 12 dashed ring */
+  .v12 .ring-fg{stroke-dasharray:3 6 !important;stroke-linecap:butt;}
+  /* 13 squircle */
+  .v13{border-radius:22px;}
+  .v13 .ring-wrap{border-radius:14px;}
+  /* 14 vertical stack */
+  .v14{flex-direction:column;gap:10px;padding:18px 30px;border-radius:26px;text-align:center;}
+  .v14 .meta{align-items:center;text-align:center;}
+  /* 15 holographic */
+  .v15{background:linear-gradient(120deg,rgba(110,231,183,.12),rgba(168,130,255,.12),rgba(255,150,200,.12));
+    border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(8px);}
+  .v15 .val{background:linear-gradient(90deg,#fff,#cfd6ff);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  /* 16 inset / recessed */
+  .v16{background:#0a0b0d;box-shadow:inset 0 2px 8px rgba(0,0,0,.8),inset 0 -1px 0 rgba(255,255,255,.04);border:1px solid rgba(0,0,0,.5);}
+  /* 17 double ring */
+  .v17 .ring-wrap::after{content:"";position:absolute;inset:7px;border-radius:50%;border:1.5px solid color-mix(in srgb,var(--c) 30%,transparent);}
+  /* 18 wide bar style */
+  .v18{padding:14px 22px;gap:22px;}
+  .v18 .ring-wrap{width:46px;height:46px;}
+  /* 19 mono terminal */
+  .v19{background:#0a0c0a;border:1px solid color-mix(in srgb,var(--c) 24%,transparent);border-radius:8px;}
+  .v19 .val,.v19 .lab{font-family:'JetBrains Mono',monospace;}
+  .v19 .lab::before{content:"› ";color:var(--c);}
+  /* 20 soft pastel glow */
+  .v20{background:radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--c) 14%,#0c0d0f),#0a0b0d);
+    border:1px solid rgba(255,255,255,.08);box-shadow:0 14px 40px color-mix(in srgb,var(--c) 14%,transparent);}
+
+  /* ---- decorative continuous animations (toggled per global anim) ---- */
+  @keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
+  @keyframes breathe{0%,100%{filter:drop-shadow(0 0 4px color-mix(in srgb,var(--c) 50%,transparent));}50%{filter:drop-shadow(0 0 16px color-mix(in srgb,var(--c) 95%,transparent));}}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  @keyframes huecycle{to{filter:hue-rotate(360deg);}}
+  @keyframes march{to{stroke-dashoffset:calc(var(--ring) - 100);}}
+  @keyframes shimmer{0%{background-position:-200% 0;}100%{background-position:200% 0;}}
+
+  .anim-pulse .pill{animation:pulse calc(2.4s / var(--speed)) var(--ease) infinite;}
+  .anim-breathe .ring-fg{animation:breathe calc(2.6s / var(--speed)) ease-in-out infinite;}
+  .anim-spin .ring-wrap::before{animation:spin calc(3.5s / var(--speed)) linear infinite;}
+  .anim-spin .ring-wrap svg{animation:spin calc(6s / var(--speed)) linear infinite;}
+  .anim-huecycle .pill{animation:huecycle calc(8s / var(--speed)) linear infinite;}
+  .anim-march .ring-fg{stroke-dasharray:8 8 !important;animation:march calc(1.4s / var(--speed)) linear infinite;}
+  .anim-shimmer .pill::after{
+    content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.12) 50%,transparent 70%);
+    background-size:200% 100%;animation:shimmer calc(2.2s / var(--speed)) linear infinite;
+  }
+
+  /* ---- entrance / container animations (one-shot, applied on render/replay) ---- */
+  @keyframes e-fade{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
+  @keyframes e-blur{from{opacity:0;filter:blur(12px);}to{opacity:1;filter:blur(0);}}
+  @keyframes e-flip{from{opacity:0;transform:perspective(700px) rotateX(-55deg);}to{opacity:1;transform:none;}}
+  @keyframes e-pop{0%{opacity:0;transform:scale(.78);}60%{transform:scale(1.04);}100%{opacity:1;transform:scale(1);}}
+  @keyframes e-slide{from{opacity:0;transform:translateX(-26px);}to{opacity:1;transform:none;}}
+  @keyframes e-bounce{0%{opacity:0;transform:translateY(-30px);}55%{opacity:1;transform:translateY(6px);}75%{transform:translateY(-3px);}100%{transform:translateY(0);}}
+  @keyframes e-wipe{from{clip-path:inset(0 100% 0 0);}to{clip-path:inset(0 0 0 0);}}
+
+  .e-fade .pill{animation:e-fade calc(.7s / var(--speed)) var(--ease) both;}
+  .e-blur .pill{animation:e-blur calc(.8s / var(--speed)) var(--ease) both;}
+  .e-flip .pill{animation:e-flip calc(.8s / var(--speed)) var(--ease) both;}
+  .e-pop .pill{animation:e-pop calc(.7s / var(--speed)) var(--ease) both;}
+  .e-slide .pill{animation:e-slide calc(.7s / var(--speed)) var(--ease) both;}
+  .e-bounce .pill{animation:e-bounce calc(.9s / var(--speed)) var(--ease) both;}
+  .e-wipe .pill{animation:e-wipe calc(.8s / var(--speed)) var(--ease) both;}
+
+  .toast{
+    position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:rgba(20,21,24,.92);border:1px solid var(--accent);color:var(--ink);
+    padding:11px 20px;border-radius:11px;font-size:13px;z-index:100;
+    opacity:0;pointer-events:none;transition:all .4s var(--ease);
+    backdrop-filter:blur(10px);
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast b{color:var(--accent);font-family:'JetBrains Mono',monospace;}
+
+  /* =========================================================
+     LAB TABS  ·  switch between the two button labs
+     ========================================================= */
+  .labtabs{
+    display:flex;gap:4px;align-self:center;margin-right:4px;
+    background:rgba(255,255,255,.03);border:1px solid var(--hair);
+    border-radius:12px;padding:4px;
+  }
+  .labtab{
+    font-family:'Inter';font-size:12.5px;color:var(--muted);cursor:pointer;
+    background:transparent;border:none;padding:7px 14px;border-radius:9px;
+    transition:color .25s var(--ease),background .25s var(--ease);
+  }
+  .labtab:hover{color:var(--ink);}
+  .labtab.active{background:rgba(255,255,255,.07);color:var(--ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.08);}
+  main.hidden{display:none;}
+  .seggrid{grid-template-columns:repeat(auto-fill,minmax(470px,1fr));}
+
+  /* =========================================================
+     SEGMENT TABS  ·  the goal / section selector  (liquid glass)
+     reference: Long-term goals · Short-term goals · Daily schedule
+     one active tab carries a vivid liquid-glass gradient + glow.
+     base structure is shared; each .sNN variant restyles it.
+     ========================================================= */
+  .seg{
+    --c:var(--accent);
+    position:relative;display:flex;gap:10px;width:100%;
+    padding:10px;border-radius:20px;
+    background:rgba(255,255,255,.022);border:1px solid var(--hair);
+  }
+  .seg-thumb{display:none;}
+  .segbtn{
+    position:relative;z-index:1;flex:1;min-width:0;
+    display:flex;flex-direction:column;align-items:center;gap:5px;
+    padding:15px 14px;border-radius:14px;cursor:pointer;text-align:center;
+    background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);
+    font-family:'Inter',system-ui,sans-serif;
+    transition:background .4s var(--ease),border-color .4s var(--ease),
+      box-shadow .4s var(--ease),color .3s var(--ease),transform .4s var(--ease);
+  }
+  .segbtn:hover{border-color:var(--hair-strong);}
+  .segbtn .s-label{font-size:13.5px;font-weight:600;color:var(--ink);letter-spacing:.1px;}
+  .segbtn .s-count{font-size:12.5px;color:var(--faint);font-variant-numeric:tabular-nums;}
+
+  /* shared ACTIVE = liquid-glass gradient (the reference look) */
+  .segbtn.on{
+    color:#06241c;border-color:transparent;
+    background:linear-gradient(140deg,
+      color-mix(in srgb,var(--c) 88%,#ffffff),
+      color-mix(in srgb,var(--c) 62%,#22d3ee));
+    box-shadow:0 10px 26px color-mix(in srgb,var(--c) 34%,transparent),
+      inset 0 1px 0 rgba(255,255,255,.55),
+      inset 0 -10px 18px rgba(0,0,0,.12);
+  }
+  .segbtn.on .s-label{color:#06241c;}
+  .segbtn.on .s-count{color:rgba(6,36,28,.66);}
+  .seg.noglow .segbtn.on{box-shadow:inset 0 1px 0 rgba(255,255,255,.45);}
+
+  /* ---- 10 SEGMENT VARIANTS ---- */
+  /* s01 liquid glass (reference) */
+  .s01{}
+  /* s02 frosted pills (no track) */
+  .s02{background:transparent;border:none;padding:0;gap:12px;}
+  .s02 .segbtn{border-radius:999px;border:1px solid rgba(255,255,255,.12);}
+  .s02 .segbtn:not(.on){background:rgba(255,255,255,.05);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
+  /* s03 sliding glass thumb */
+  .s03{gap:0;padding:8px;background:rgba(0,0,0,.32);}
+  .s03 .segbtn{background:transparent;border:none;}
+  .s03 .segbtn.on{background:transparent;box-shadow:none;color:#06241c;}
+  .s03 .seg-thumb{
+    display:block;position:absolute;top:8px;bottom:8px;left:8px;z-index:0;
+    width:calc((100% - 16px) / 3);border-radius:14px;
+    background:linear-gradient(140deg,color-mix(in srgb,var(--c) 88%,#fff),color-mix(in srgb,var(--c) 62%,#22d3ee));
+    box-shadow:0 8px 22px color-mix(in srgb,var(--c) 34%,transparent),inset 0 1px 0 rgba(255,255,255,.5);
+    transform:translateX(calc(var(--i,0) * 100%));transition:transform .5s var(--ease);
+  }
+  /* s04 inset / recessed track */
+  .s04{gap:0;padding:8px;background:rgba(0,0,0,.42);box-shadow:inset 0 2px 9px rgba(0,0,0,.7);}
+  .s04 .segbtn{background:transparent;border:none;}
+  .s04 .segbtn.on{background:transparent;box-shadow:none;}
+  .s04 .seg-thumb{
+    display:block;position:absolute;top:8px;bottom:8px;left:8px;z-index:0;
+    width:calc((100% - 16px) / 3);border-radius:12px;
+    background:linear-gradient(140deg,color-mix(in srgb,var(--c) 85%,#fff),color-mix(in srgb,var(--c) 60%,#22d3ee));
+    box-shadow:0 6px 16px color-mix(in srgb,var(--c) 30%,transparent),inset 0 1px 0 rgba(255,255,255,.5);
+    transform:translateX(calc(var(--i,0) * 100%));transition:transform .5s var(--ease);
+  }
+  /* s05 neon glow */
+  .s05 .segbtn.on{
+    box-shadow:0 0 30px color-mix(in srgb,var(--c) 55%,transparent),
+      0 0 62px color-mix(in srgb,var(--c) 26%,transparent),
+      inset 0 1px 0 rgba(255,255,255,.5);
+  }
+  /* s06 aurora gradient */
+  .s06 .segbtn.on{background:linear-gradient(120deg,#34d399,#22d3ee 46%,#a78bfa);color:#0a1024;}
+  .s06 .segbtn.on .s-label{color:#0a1024;}
+  .s06 .segbtn.on .s-count{color:rgba(10,16,36,.6);}
+  /* s07 glass gradient border, dark fill */
+  .s07 .segbtn.on{
+    color:var(--ink);background:#0c1512;border:1px solid transparent;
+    background-image:linear-gradient(#0c1512,#0c1512),linear-gradient(140deg,var(--c),#22d3ee);
+    background-origin:border-box;background-clip:padding-box,border-box;
+    box-shadow:0 8px 22px color-mix(in srgb,var(--c) 24%,transparent);
+  }
+  .s07 .segbtn.on .s-label{color:var(--ink);}
+  .s07 .segbtn.on .s-count{color:var(--c);}
+  /* s08 heavy frosted blur */
+  .s08{background:rgba(255,255,255,.04);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.14);}
+  .s08 .segbtn:not(.on){background:rgba(255,255,255,.04);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+  /* s09 soft 3D raised */
+  .s09 .segbtn{border:none;}
+  .s09 .segbtn:not(.on){background:#15171b;box-shadow:5px 5px 12px rgba(0,0,0,.5),-4px -4px 10px rgba(255,255,255,.03);}
+  .s09 .segbtn.on{box-shadow:0 12px 26px color-mix(in srgb,var(--c) 38%,transparent),inset 0 1px 0 rgba(255,255,255,.6);transform:translateY(-2px);}
+  /* s10 minimal tinted glass */
+  .s10{background:transparent;border:none;padding:0;gap:8px;}
+  .s10 .segbtn{background:rgba(255,255,255,.015);border:1px solid var(--hair);}
+  .s10 .segbtn.on{
+    color:var(--ink);background:color-mix(in srgb,var(--c) 14%,transparent);
+    border:1px solid color-mix(in srgb,var(--c) 45%,transparent);
+    box-shadow:0 0 0 1px color-mix(in srgb,var(--c) 20%,transparent);
+  }
+  .s10 .segbtn.on .s-label{color:var(--ink);}
+  .s10 .segbtn.on .s-count{color:var(--c);}
+
+  @media(max-width:520px){.grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="bar-inner">
+    <div class="brand">
+      <h1>Button Lab</h1>
+      <span>stat pill · 20 variants</span>
+    </div>
+
+    <div class="labtabs">
+      <button class="labtab active" data-view="pills">Stat pills</button>
+      <button class="labtab" data-view="segs">Goal tabs</button>
+    </div>
+
+    <div class="ctrl">
+      <label>Global color</label>
+      <div class="swatches" id="swatches">
+        <button class="sw active" data-c="#6EE7B7" style="background:#6EE7B7;color:#6EE7B7"></button>
+        <button class="sw" data-c="#F472B6" style="background:#F472B6;color:#F472B6"></button>
+        <button class="sw" data-c="#A78BFA" style="background:#A78BFA;color:#A78BFA"></button>
+        <button class="sw" data-c="#60A5FA" style="background:#60A5FA;color:#60A5FA"></button>
+        <button class="sw" data-c="#FBBF24" style="background:#FBBF24;color:#FBBF24"></button>
+        <button class="sw" data-c="#FB7185" style="background:#FB7185;color:#FB7185"></button>
+        <label class="sw-pick" title="custom color"><input type="color" id="customColor" value="#6EE7B7"></label>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <label>Animation</label>
+      <select id="animSel"></select>
+    </div>
+
+    <div class="ctrl">
+      <label>Dataset</label>
+      <select id="dataSel"></select>
+    </div>
+
+    <div class="ctrl slide">
+      <div class="row"><label>Speed</label><b id="speedVal">1.0×</b></div>
+      <input type="range" id="speed" min="0.25" max="3" step="0.05" value="1">
+    </div>
+
+    <div class="ctrl slide">
+      <div class="row"><label>Ring thickness</label><b id="thickVal">6</b></div>
+      <input type="range" id="thick" min="2" max="12" step="1" value="6">
+    </div>
+
+    <div class="ctrl">
+      <label>Options</label>
+      <div class="toggles">
+        <label class="tg"><input type="checkbox" id="tGlow" checked><span class="box"></span><span class="txt">Glow</span></label>
+        <label class="tg"><input type="checkbox" id="tLabel" checked><span class="box"></span><span class="txt">Label</span></label>
+        <label class="tg"><input type="checkbox" id="tCore"><span class="box"></span><span class="txt">Ring %</span></label>
+        <label class="tg"><input type="checkbox" id="tMono"><span class="box"></span><span class="txt">Mono #</span></label>
+        <label class="tg"><input type="checkbox" id="tLoop"><span class="box"></span><span class="txt">Loop</span></label>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+    <button class="replay-all" id="replayAll">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+      Replay all
+    </button>
+  </div>
+</header>
+
+<main class="grid" id="grid"></main>
+<main class="grid seggrid hidden" id="segGrid"></main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   STATE
+   ============================================================ */
+const RING_R = 23;                         // ring radius (px in svg units)
+const CIRC = +(2 * Math.PI * RING_R).toFixed(2);
+
+const VARIANTS = [
+  {id:'v01', name:'Classic'},
+  {id:'v02', name:'Frosted glass'},
+  {id:'v03', name:'Neumorphic'},
+  {id:'v04', name:'Outline'},
+  {id:'v05', name:'Conic halo'},
+  {id:'v06', name:'Neon'},
+  {id:'v07', name:'Flat minimal'},
+  {id:'v08', name:'Brutalist'},
+  {id:'v09', name:'Gradient body'},
+  {id:'v10', name:'Mirrored'},
+  {id:'v11', name:'Thin / big number'},
+  {id:'v12', name:'Dashed ring'},
+  {id:'v13', name:'Squircle'},
+  {id:'v14', name:'Vertical stack'},
+  {id:'v15', name:'Holographic'},
+  {id:'v16', name:'Recessed / inset'},
+  {id:'v17', name:'Double ring'},
+  {id:'v18', name:'Wide'},
+  {id:'v19', name:'Terminal mono'},
+  {id:'v20', name:'Soft pastel glow'},
+];
+
+// each dataset is a pool; card i shows pool[i % pool.length] for variety
+const DATASETS = {
+  'Sales': [
+    {ring:67, val:67,   fmt:'pct', lab:'Sales by Day'},
+    {ring:74, val:234,  fmt:'usd', lab:'Revenue'},
+    {ring:52, val:1240, fmt:'k',   lab:'Orders'},
+    {ring:88, val:88,   fmt:'pct', lab:'Conversion'},
+    {ring:41, val:412,  fmt:'usd', lab:'Avg cart'},
+  ],
+  'Analytics': [
+    {ring:62, val:24800,fmt:'k',   lab:'Visitors'},
+    {ring:35, val:35,   fmt:'pct', lab:'Bounce rate'},
+    {ring:78, val:4.7,  fmt:'plain',lab:'Avg session'},
+    {ring:91, val:91,   fmt:'pct', lab:'Uptime'},
+    {ring:58, val:1820, fmt:'k',   lab:'Pageviews'},
+  ],
+  'Fitness': [
+    {ring:67, val:8400, fmt:'plain',lab:'Steps'},
+    {ring:80, val:80,   fmt:'pct', lab:'Goal'},
+    {ring:45, val:540,  fmt:'plain',lab:'Calories'},
+    {ring:72, val:72,   fmt:'plain',lab:'Resting BPM'},
+    {ring:93, val:7.8,  fmt:'plain',lab:'Sleep hrs'},
+  ],
+  'Crypto': [
+    {ring:64, val:64210,fmt:'usd', lab:'BTC'},
+    {ring:48, val:3.4,  fmt:'plain',lab:'24h change %'},
+    {ring:77, val:77,   fmt:'pct', lab:'Portfolio up'},
+    {ring:55, val:2840, fmt:'usd', lab:'ETH'},
+    {ring:38, val:1.02, fmt:'usd', lab:'Stable'},
+  ],
+};
+
+// goal shown on the BACK of each pill when tapped. one per card (cycles).
+// categories rotate: long-term / short-term / scheduled.
+const GOAL_CATS = [
+  {key:'long',  label:'Long-term goal', icon:'🏔️'},
+  {key:'short', label:'Short-term goal',icon:'⚡'},
+  {key:'sched', label:'Scheduled',      icon:'📅'},
+];
+const GOALS = [
+  {text:'Reach 10k monthly active users by Q4', due:'Dec 2026'},
+  {text:'Ship the redesign before the demo on Friday', due:'in 3 days'},
+  {text:'Stand-up sync every weekday at 9:00 AM', due:'daily · 9:00'},
+  {text:'Grow recurring revenue to $50k / month', due:'2027'},
+  {text:'Close out the onboarding flow this sprint', due:'this week'},
+  {text:'Post the launch thread Monday morning', due:'Mon · 8:00'},
+  {text:'Learn enough Rust to rewrite the core engine', due:'6 months'},
+  {text:'Reply to all beta feedback by end of day', due:'today'},
+  {text:'Quarterly investor update call', due:'1st of month'},
+  {text:'Hit a 4.8★ average App Store rating', due:'ongoing'},
+  {text:'Refactor the auth layer before scaling', due:'next sprint'},
+  {text:'Weekly long run, 10km, Saturday morning', due:'Sat · 7:00'},
+  {text:'Build the personal brand to 50k followers', due:'this year'},
+  {text:'Fix the top 5 reported bugs this week', due:'Fri'},
+  {text:'Renew the domain & SSL certificates', due:'Jan 14'},
+  {text:'Reach financial runway of 18 months', due:'long-term'},
+  {text:'Draft the pitch deck before the meeting', due:'tomorrow'},
+  {text:'Monthly budget review & forecast', due:'last Fri'},
+  {text:'Open-source the component library someday', due:'2027'},
+  {text:'Send the newsletter every Tuesday', due:'Tue · 10:00'},
+];
+
+// animation presets. type drives the ring + a css class on the stage.
+const ANIMS = [
+  {id:'sweep',    name:'Ring sweep',        ease:'outExpo',   cls:''},
+  {id:'count',    name:'Count + sweep',     ease:'outExpo',   cls:''},
+  {id:'spring',   name:'Spring overshoot',  ease:'spring',    cls:''},
+  {id:'elastic',  name:'Elastic',           ease:'elastic',   cls:''},
+  {id:'segment',  name:'Segment fill',      ease:'steps',     cls:''},
+  {id:'bounce',   name:'Bounce in',         ease:'outExpo',   cls:'e-bounce'},
+  {id:'fade',     name:'Fade rise',         ease:'outExpo',   cls:'e-fade'},
+  {id:'blur',     name:'Blur in',           ease:'outExpo',   cls:'e-blur'},
+  {id:'flip',     name:'Flip in',           ease:'outExpo',   cls:'e-flip'},
+  {id:'pop',      name:'Scale pop',         ease:'spring',    cls:'e-pop'},
+  {id:'slide',    name:'Slide left',        ease:'outExpo',   cls:'e-slide'},
+  {id:'wipe',     name:'Wipe reveal',       ease:'outExpo',   cls:'e-wipe'},
+  {id:'pulse',    name:'Pulse loop',        ease:'outExpo',   cls:'anim-pulse',  loop:true},
+  {id:'breathe',  name:'Glow breathe',      ease:'outExpo',   cls:'anim-breathe',loop:true},
+  {id:'spin',     name:'Gradient spin',     ease:'outExpo',   cls:'anim-spin',   loop:true},
+  {id:'shimmer',  name:'Shimmer',           ease:'outExpo',   cls:'anim-shimmer'},
+  {id:'huecycle', name:'Color cycle',       ease:'outExpo',   cls:'anim-huecycle',loop:true},
+  {id:'march',    name:'Dash march',        ease:'outExpo',   cls:'anim-march',  loop:true},
+];
+
+const state = {
+  color:'#6EE7B7',          // global color (applied to all + per-card override store)
+  cardColors:{},            // id -> color override
+  segColors:{},             // segment-tab card id -> color override
+  anim:'sweep',
+  dataset:'Sales',
+  speed:1,
+  thick:6,
+  glow:true, label:true, core:false, mono:false, loop:false,
+};
+
+/* ============================================================
+   EASING
+   ============================================================ */
+const E = {
+  outExpo:t => t===1?1:1-Math.pow(2,-10*t),
+  spring:t => 1 - Math.cos(t*Math.PI*1.5)*Math.pow(2,-6*t),
+  elastic:t => t===0?0:t===1?1:Math.pow(2,-10*t)*Math.sin((t*10-0.75)*((2*Math.PI)/3))+1,
+  steps:t => Math.round(t*8)/8,
+};
+
+/* ============================================================
+   FORMAT
+   ============================================================ */
+function fmtVal(v, fmt){
+  if(fmt==='pct') return Math.round(v)+'%';
+  if(fmt==='usd'){
+    if(v>=1000) return '$'+Math.round(v).toLocaleString();
+    return '$'+(Number.isInteger(v)?v:v.toFixed(0));
+  }
+  if(fmt==='k'){
+    if(v>=1000) return (v/1000).toFixed(1).replace(/\.0$/,'')+'k';
+    return Math.round(v).toString();
+  }
+  // plain
+  if(v>=1000) return Math.round(v).toLocaleString();
+  return Number.isInteger(v)?v:(+v).toFixed(1);
+}
+
+/* ============================================================
+   BUILD CONTROLS
+   ============================================================ */
+const animSel = document.getElementById('animSel');
+ANIMS.forEach(a=>{const o=document.createElement('option');o.value=a.id;o.textContent=a.name;animSel.appendChild(o);});
+animSel.value = state.anim;
+
+const dataSel = document.getElementById('dataSel');
+Object.keys(DATASETS).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k;dataSel.appendChild(o);});
+dataSel.value = state.dataset;
+
+/* ============================================================
+   RENDER GRID
+   ============================================================ */
+const grid = document.getElementById('grid');
+
+function ringSvg(){
+  return `<svg viewBox="0 0 56 56">
+    <circle class="ring-bg" cx="28" cy="28" r="${RING_R}"></circle>
+    <circle class="ring-fg" cx="28" cy="28" r="${RING_R}"></circle>
+  </svg>`;
+}
+
+function cardColor(id){ return state.cardColors[id] || state.color; }
+
+function buildGrid(){
+  grid.innerHTML = '';
+  VARIANTS.forEach((v,i)=>{
+    const data = DATASETS[state.dataset];
+    const d = data[i % data.length];
+    const col = cardColor(v.id);
+    const cat = GOAL_CATS[i % GOAL_CATS.length];
+    const goal = GOALS[i % GOALS.length];
+
+    const card = document.createElement('section');
+    card.className = 'card';
+    card.dataset.id = v.id;
+    card.dataset.idx = i;
+
+    card.innerHTML = `
+      <div class="tag"><b>card ${String(i+1).padStart(2,'0')}</b> · ${v.id}</div>
+      <div class="card-tools">
+        <label class="tool dot" title="card color" style="--cc:${col}">
+          <i style="background:${col}"></i>
+          <input type="color" value="${col}" data-id="${v.id}">
+        </label>
+        <button class="tool t-replay" title="replay">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+        </button>
+        <button class="tool t-copy" title="copy HTML+CSS">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+        </button>
+      </div>
+      <div class="stage">
+        <div class="flip" style="--c:${col}">
+          <div class="flipper">
+            <div class="face front">
+              <div class="pill ${v.id}" style="--c:${col}">
+                <div class="ring-wrap">
+                  ${ringSvg()}
+                  <div class="ring-core">0%</div>
+                </div>
+                <div class="meta">
+                  <div class="val">0</div>
+                  <div class="lab">${d.lab}</div>
+                </div>
+              </div>
+            </div>
+            <div class="face back">
+              <div class="pill ${v.id}" style="--c:${col}">
+                <div class="goal-icon">${cat.icon}</div>
+                <div class="goal-meta">
+                  <div class="goal-cat">${cat.label}</div>
+                  <div class="goal-text">${goal.text}</div>
+                  <div class="goal-due">⌁ ${goal.due}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <span class="flip-hint">tap to flip ↺</span>
+      </div>
+      <div class="vname">${v.name}</div>
+    `;
+    grid.appendChild(card);
+
+    // tap the pill to flip it over and reveal the goal
+    const flip = card.querySelector('.flip');
+    flip.addEventListener('click',()=>flip.classList.toggle('flipped'));
+
+    // wire per-card controls
+    card.querySelector('.t-replay').addEventListener('click',()=>playCard(card));
+    card.querySelector('.t-copy').addEventListener('click',()=>copyCard(card));
+    card.querySelector('.dot input').addEventListener('input',e=>{
+      const c = e.target.value;
+      state.cardColors[v.id] = c;
+      card.querySelectorAll('.pill').forEach(p=>p.style.setProperty('--c', c));
+      card.querySelector('.flip').style.setProperty('--c', c);
+      card.querySelector('.dot').style.setProperty('--cc', c);
+      card.querySelector('.dot i').style.background = c;
+    });
+
+    applyStaticOptions(card);
+    playCard(card);
+  });
+}
+
+/* apply ring thickness + toggles to a single card */
+function applyStaticOptions(card){
+  const pill = card.querySelector('.pill');
+  pill.querySelectorAll('.ring-bg,.ring-fg').forEach(c=>{
+    // variants 11 override thickness in css; respect global as base
+    c.style.strokeWidth = state.thick;
+  });
+  pill.classList.toggle('noglow', !state.glow);
+  pill.classList.toggle('nolabel', !state.label);
+  pill.classList.toggle('showcore', state.core);
+  pill.classList.toggle('mononum', state.mono);
+}
+
+/* ============================================================
+   ANIMATE A CARD
+   ============================================================ */
+const rafs = new WeakMap();
+
+function playCard(card){
+  const idx = +card.dataset.idx;
+  const data = DATASETS[state.dataset];
+  const d = data[idx % data.length];
+  const pill = card.querySelector('.pill');
+  const fg = pill.querySelector('.ring-fg');
+  const valEl = pill.querySelector('.val');
+  const coreEl = pill.querySelector('.ring-core');
+  const anim = ANIMS.find(a=>a.id===state.anim);
+
+  // set ring circumference vars
+  fg.style.setProperty('stroke-dasharray', CIRC);
+  pill.style.setProperty('--ring', CIRC);
+
+  // reset & re-trigger the css entrance/decorative class on the stage
+  const stage = card.querySelector('.stage');
+  stage.className = 'stage';
+  // strip prior anim classes from card root holder, re-add
+  card.classList.remove(...[...card.classList].filter(c=>c.startsWith('anim-')||c.startsWith('e-')));
+  void pill.offsetWidth; // reflow
+  if(anim.cls) card.classList.add(...anim.cls.split(' '));
+
+  // cancel previous rAF
+  if(rafs.get(card)) cancelAnimationFrame(rafs.get(card));
+
+  const target = d.ring;          // 0..100
+  const easeFn = E[anim.ease] || E.outExpo;
+  const base = anim.id==='count' ? 1500 : 1100;
+  const dur = base / state.speed;
+  let start = null;
+
+  function frame(ts){
+    if(start===null) start = ts;
+    let t = Math.min((ts-start)/dur, 1);
+    let e = easeFn(t);
+    // overshoot eases can exceed 1 — clamp ring offset sensibly
+    const pct = Math.max(0, e) * target;
+    const off = CIRC - (Math.min(pct,100)/100)*CIRC;
+    fg.style.strokeDashoffset = off;
+    coreEl.textContent = Math.round(Math.min(Math.max(pct,0),100)) + '%';
+    valEl.textContent = fmtVal(Math.max(e,0)*d.val, d.fmt);
+    if(t<1){ rafs.set(card, requestAnimationFrame(frame)); }
+    else{
+      fg.style.strokeDashoffset = CIRC - (target/100)*CIRC;
+      valEl.textContent = fmtVal(d.val, d.fmt);
+      coreEl.textContent = Math.round(target)+'%';
+      // loop handling for one-shot ring under global loop toggle
+      if(state.loop && !anim.loop){
+        setTimeout(()=>playCard(card), 700/state.speed);
+      }
+    }
+  }
+  rafs.set(card, requestAnimationFrame(frame));
+}
+
+function playAll(){ document.querySelectorAll('.card').forEach(playCard); }
+
+/* ============================================================
+   COPY  ·  emit a self-contained HTML + <style> snippet
+   ============================================================ */
+function copyCard(card){
+  const idx = +card.dataset.idx;
+  const v = VARIANTS[idx];
+  const data = DATASETS[state.dataset];
+  const d = data[idx % data.length];
+  const col = cardColor(v.id);
+  const off = (CIRC - (d.ring/100)*CIRC).toFixed(2);
+  const u = 'sp'+idx+Math.round(d.ring); // unique-ish class suffix
+  const anim = ANIMS.find(a=>a.id===state.anim);
+
+  // pull this variant's own css rules out of the stylesheet so the snippet is standalone
+  const variantCSS = extractVariantCSS(v.id);
+  const animCSS = anim.cls ? extractAnimCSS(anim.cls) : '';
+  const dur = (1100/state.speed/1000).toFixed(2);
+
+  const html =
+`<!-- stat pill · ${v.name} (${v.id}) · from button-lab -->
+<div class="statpill ${v.id} ${u}">
+  <div class="ring-wrap">
+    <svg viewBox="0 0 56 56">
+      <circle class="ring-bg" cx="28" cy="28" r="${RING_R}"></circle>
+      <circle class="ring-fg" cx="28" cy="28" r="${RING_R}"></circle>
+    </svg>
+  </div>
+  <div class="meta">
+    <div class="val">${fmtVal(d.val,d.fmt)}</div>
+    <div class="lab">${d.lab}</div>
+  </div>
+</div>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap');
+.statpill{
+  --c:${col};
+  display:flex;align-items:center;gap:18px;
+  padding:14px 26px 14px 16px;border-radius:999px;
+  background:#0c0d0f;border:1px solid rgba(255,255,255,.07);
+  box-shadow:0 12px 34px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05);
+  font-family:'Inter',system-ui,sans-serif;width:max-content;
+}
+.statpill .ring-wrap{position:relative;width:52px;height:52px;flex:none;}
+.statpill svg{width:100%;height:100%;transform:rotate(-90deg);overflow:visible;}
+.statpill .ring-bg{fill:none;stroke:rgba(255,255,255,.09);stroke-width:${state.thick};}
+.statpill .ring-fg{
+  fill:none;stroke:var(--c);stroke-width:${state.thick};stroke-linecap:round;
+  stroke-dasharray:${CIRC};stroke-dashoffset:${CIRC};
+  ${state.glow?`filter:drop-shadow(0 0 5px color-mix(in srgb,var(--c) 70%,transparent));`:''}
+  transition:stroke-dashoffset ${dur}s cubic-bezier(.16,1,.3,1);
+}
+.statpill .meta{display:flex;flex-direction:column;line-height:1.05;}
+.statpill .val{font-size:27px;font-weight:600;letter-spacing:-.5px;color:#fff;${state.mono?"font-family:'JetBrains Mono',monospace;":''}}
+.statpill .lab{font-size:12.5px;color:#8b8f96;margin-top:5px;${state.label?'':'display:none;'}}
+${variantCSS}${animCSS}
+/* animate on load: drop the final offset in via JS or a class toggle */
+.statpill.go .ring-fg{stroke-dashoffset:${off};}
+</style>
+
+<script>
+// trigger the ring fill once mounted
+requestAnimationFrame(()=>document.querySelector('.${u}').classList.add('go'));
+<\/script>`;
+
+  navigator.clipboard.writeText(html).then(()=>{
+    const btn = card.querySelector('.t-copy');
+    btn.classList.add('copied');
+    setTimeout(()=>btn.classList.remove('copied'),1200);
+    toast(`Copied <b>${v.id}</b> · ${v.name}`);
+  }).catch(()=>toast('Copy failed — clipboard blocked'));
+}
+
+/* read rules for a given variant class straight from our stylesheet */
+function extractVariantCSS(id){
+  return collectRules(sel => sel.includes('.'+id))
+    .map(r => r.cssText.replace(/\.pill/g,'.statpill').replace(new RegExp('\\.'+id,'g'),'.statpill.'+id))
+    .join('\n');
+}
+function extractAnimCSS(clsStr){
+  const classes = clsStr.split(' ');
+  let out = [];
+  classes.forEach(cls=>{
+    out = out.concat(collectRules(sel => sel.includes('.'+cls)).map(r=>r.cssText.replace(/\.pill/g,'.statpill')));
+  });
+  // include any keyframes referenced
+  const kf = collectKeyframes();
+  return (out.join('\n')+'\n'+kf);
+}
+function collectRules(test){
+  const out=[];
+  for(const sheet of document.styleSheets){
+    let rules; try{rules=sheet.cssRules;}catch(e){continue;}
+    if(!rules) continue;
+    for(const r of rules){ if(r.selectorText && test(r.selectorText)) out.push(r); }
+  }
+  return out;
+}
+function collectKeyframes(){
+  const out=[];
+  for(const sheet of document.styleSheets){
+    let rules; try{rules=sheet.cssRules;}catch(e){continue;}
+    if(!rules) continue;
+    for(const r of rules){ if(r.type===CSSRule.KEYFRAMES_RULE) out.push(r.cssText); }
+  }
+  return out.join('\n');
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.innerHTML = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'),1900);
+}
+
+/* ============================================================
+   GLOBAL CONTROL WIRING
+   ============================================================ */
+function setGlobalColor(c){
+  state.color = c;
+  state.cardColors = {};                  // global overrides per-card picks
+  state.segColors = {};
+  document.getElementById('customColor').value = c;
+  buildGrid();
+  buildSegGrid();
+}
+
+document.getElementById('swatches').addEventListener('click',e=>{
+  const sw = e.target.closest('.sw');
+  if(!sw) return;
+  document.querySelectorAll('.sw').forEach(s=>s.classList.remove('active'));
+  sw.classList.add('active');
+  setGlobalColor(sw.dataset.c);
+});
+document.getElementById('customColor').addEventListener('input',e=>{
+  document.querySelectorAll('.sw').forEach(s=>s.classList.remove('active'));
+  setGlobalColor(e.target.value);
+});
+
+animSel.addEventListener('change',e=>{ state.anim=e.target.value; playAll(); });
+dataSel.addEventListener('change',e=>{ state.dataset=e.target.value; buildGrid(); });
+
+const speed=document.getElementById('speed'), speedVal=document.getElementById('speedVal');
+speed.addEventListener('input',e=>{
+  state.speed=+e.target.value;
+  speedVal.textContent=state.speed.toFixed(2).replace(/0$/,'')+'×';
+  document.documentElement.style.setProperty('--speed', state.speed);
+  playAll();
+});
+
+const thick=document.getElementById('thick'), thickVal=document.getElementById('thickVal');
+thick.addEventListener('input',e=>{
+  state.thick=+e.target.value;
+  thickVal.textContent=state.thick;
+  document.querySelectorAll('.card').forEach(applyStaticOptions);
+});
+
+function bindToggle(id,key){
+  document.getElementById(id).addEventListener('change',e=>{
+    state[key]=e.target.checked;
+    document.querySelectorAll('.card').forEach(applyStaticOptions);
+    if(key==='glow') document.querySelectorAll('.seg').forEach(s=>s.classList.toggle('noglow',!state.glow));
+    if(key==='loop') playAll();
+  });
+}
+bindToggle('tGlow','glow');
+bindToggle('tLabel','label');
+bindToggle('tCore','core');
+bindToggle('tMono','mono');
+bindToggle('tLoop','loop');
+
+document.getElementById('replayAll').addEventListener('click',playAll);
+
+/* ============================================================
+   SEGMENT TABS  ·  second lab tab
+   the goal / section selector from the reference screenshot:
+   Long-term goals · Short-term goals · Daily schedule, with one
+   active tab carrying a liquid-glass gradient. 10 variants.
+   ============================================================ */
+const SEG_TABS = [
+  {label:'Long-term goals', count:0},
+  {label:'Short-term goals', count:2},
+  {label:'Daily schedule', count:1},
+];
+const SEG_ACTIVE = 1;     // default active tab (middle, as in the screenshot)
+
+const SEGVARIANTS = [
+  {id:'s01', name:'Liquid glass'},
+  {id:'s02', name:'Frosted pills'},
+  {id:'s03', name:'Sliding thumb'},
+  {id:'s04', name:'Inset track'},
+  {id:'s05', name:'Neon glow'},
+  {id:'s06', name:'Aurora gradient'},
+  {id:'s07', name:'Glass border'},
+  {id:'s08', name:'Heavy blur'},
+  {id:'s09', name:'Soft 3D'},
+  {id:'s10', name:'Minimal tint'},
+];
+
+function segCardColor(id){ return state.segColors[id] || state.color; }
+
+/* base CSS emitted with copied snippets so they stand alone (no lab tokens) */
+const SEG_COPY_CSS =
+`.seg{--c:#6EE7B7;--ink:#f4f5f6;--muted:#8b8f96;--faint:#54585f;
+  --hair:rgba(255,255,255,.09);--hair-strong:rgba(255,255,255,.16);
+  --ease:cubic-bezier(.16,1,.3,1);
+  position:relative;display:flex;gap:10px;width:100%;
+  padding:10px;border-radius:20px;
+  background:rgba(255,255,255,.022);border:1px solid var(--hair);}
+.seg-thumb{display:none;}
+.segbtn{
+  position:relative;z-index:1;flex:1;min-width:0;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  padding:15px 14px;border-radius:14px;cursor:pointer;text-align:center;
+  background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);
+  font-family:'Inter',system-ui,sans-serif;
+  transition:background .4s var(--ease),border-color .4s var(--ease),
+    box-shadow .4s var(--ease),color .3s var(--ease),transform .4s var(--ease);}
+.segbtn:hover{border-color:var(--hair-strong);}
+.segbtn .s-label{font-size:13.5px;font-weight:600;color:var(--ink);letter-spacing:.1px;}
+.segbtn .s-count{font-size:12.5px;color:var(--faint);font-variant-numeric:tabular-nums;}
+.segbtn.on{
+  color:#06241c;border-color:transparent;
+  background:linear-gradient(140deg,
+    color-mix(in srgb,var(--c) 88%,#ffffff),
+    color-mix(in srgb,var(--c) 62%,#22d3ee));
+  box-shadow:0 10px 26px color-mix(in srgb,var(--c) 34%,transparent),
+    inset 0 1px 0 rgba(255,255,255,.55),inset 0 -10px 18px rgba(0,0,0,.12);}
+.segbtn.on .s-label{color:#06241c;}
+.segbtn.on .s-count{color:rgba(6,36,28,.66);}`;
+
+const segGrid = document.getElementById('segGrid');
+
+function buildSegGrid(){
+  segGrid.innerHTML = '';
+  SEGVARIANTS.forEach((v,i)=>{
+    const col = segCardColor(v.id);
+
+    const card = document.createElement('section');
+    card.className = 'card';
+    card.dataset.id = v.id;
+    card.dataset.idx = i;
+
+    const btns = SEG_TABS.map((t,j)=>
+      `<button class="segbtn${j===SEG_ACTIVE?' on':''}" data-j="${j}">
+        <span class="s-label">${t.label}</span>
+        <span class="s-count">${t.count}</span>
+      </button>`).join('');
+
+    card.innerHTML = `
+      <div class="tag"><b>tab ${String(i+1).padStart(2,'0')}</b> · ${v.id}</div>
+      <div class="card-tools">
+        <label class="tool dot" title="card color" style="--cc:${col}">
+          <i style="background:${col}"></i>
+          <input type="color" value="${col}" data-id="${v.id}">
+        </label>
+        <button class="tool t-copy" title="copy HTML+CSS">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+        </button>
+      </div>
+      <div class="stage" style="padding:30px 6px 12px;">
+        <div class="seg ${v.id}${state.glow?'':' noglow'}" style="--c:${col};--i:${SEG_ACTIVE}" data-active="${SEG_ACTIVE}">
+          <div class="seg-thumb"></div>
+          ${btns}
+        </div>
+      </div>
+      <div class="vname">${v.name}</div>
+    `;
+    segGrid.appendChild(card);
+
+    const seg = card.querySelector('.seg');
+    // click a tab to make it active (and slide the thumb on track variants)
+    seg.querySelectorAll('.segbtn').forEach(b=>{
+      b.addEventListener('click',()=>{
+        const j = +b.dataset.j;
+        seg.querySelectorAll('.segbtn').forEach(x=>x.classList.remove('on'));
+        b.classList.add('on');
+        seg.style.setProperty('--i', j);
+        seg.dataset.active = j;
+      });
+    });
+    // per-card color override
+    card.querySelector('.dot input').addEventListener('input',e=>{
+      const c = e.target.value;
+      state.segColors[v.id] = c;
+      seg.style.setProperty('--c', c);
+      card.querySelector('.dot').style.setProperty('--cc', c);
+      card.querySelector('.dot i').style.background = c;
+    });
+    card.querySelector('.t-copy').addEventListener('click',()=>copySegment(card));
+  });
+}
+
+function copySegment(card){
+  const idx = +card.dataset.idx;
+  const v = SEGVARIANTS[idx];
+  const col = segCardColor(v.id);
+  const seg = card.querySelector('.seg');
+  const active = +seg.dataset.active;
+
+  const variantCSS = collectRules(sel => sel.includes('.'+v.id))
+    .map(r => r.cssText).join('\n');
+
+  const btns = SEG_TABS.map((t,j)=>
+`  <button class="segbtn${j===active?' on':''}">
+    <span class="s-label">${t.label}</span>
+    <span class="s-count">${t.count}</span>
+  </button>`).join('\n');
+
+  const html =
+`<!-- segment tabs · ${v.name} (${v.id}) · from button-lab -->
+<div class="seg ${v.id}" style="--c:${col};--i:${active}">
+  <div class="seg-thumb"></div>
+${btns}
+</div>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+${SEG_COPY_CSS}
+${variantCSS}
+</style>
+
+<script>
+// click a tab to switch it active (slides the thumb on track variants)
+document.querySelectorAll('.seg').forEach(seg=>{
+  const btns=[...seg.querySelectorAll('.segbtn')];
+  btns.forEach((b,i)=>b.addEventListener('click',()=>{
+    btns.forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    seg.style.setProperty('--i',i);
+  }));
+});
+<\/script>`;
+
+  navigator.clipboard.writeText(html).then(()=>{
+    const btn = card.querySelector('.t-copy');
+    btn.classList.add('copied');
+    setTimeout(()=>btn.classList.remove('copied'),1200);
+    toast(`Copied <b>${v.id}</b> · ${v.name}`);
+  }).catch(()=>toast('Copy failed — clipboard blocked'));
+}
+
+/* ---- lab tab switching ---- */
+document.querySelectorAll('.labtab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.labtab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    const segs = tab.dataset.view === 'segs';
+    document.getElementById('grid').classList.toggle('hidden', segs);
+    document.getElementById('segGrid').classList.toggle('hidden', !segs);
+    document.querySelector('.brand span').textContent =
+      segs ? 'goal tabs · 10 variants' : 'stat pill · 20 variants';
+  });
+});
+
+/* ============================================================
+   INIT
+   ============================================================ */
+document.documentElement.style.setProperty('--speed', state.speed);
+buildGrid();
+buildSegGrid();
+</script>
+</body>
+</html>
