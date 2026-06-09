@@ -198,7 +198,8 @@ function goalItemHTML(g) {
   const ic = (act, danger, title, path) => '<button class="iconbtn' + (danger ? " iconbtn--danger" : "") + '" title="' + title + '" data-act="' + act + '" data-id="' + g.id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + path + "</svg></button>";
   const toToday = g.type === "short" && !g.done ? ic("totoday", false, "Add to today", '<path d="M12 5v14M5 12h14"/>') : "";
 
-  return '<li class="gp ' + variant + (anim ? " " + anim : "") + (g.done ? " is-done" : "") + (overdue ? " is-overdue" : "") + '" style="--c:' + color + '">' +
+  // FRONT face — the stat pill
+  const front = '<div class="gp gp-face gp-front ' + variant + (anim ? " " + anim : "") + (g.done ? " is-done" : "") + (overdue ? " is-overdue" : "") + '">' +
     '<div class="ring-wrap"><svg viewBox="0 0 52 52">' +
       '<circle class="ring-bg" cx="26" cy="26" r="23"/>' +
       '<circle class="ring-fg" cx="26" cy="26" r="23" data-offset="' + offset + '" style="stroke-dasharray:' + CIRC + ';stroke-dashoffset:' + CIRC + '"/>' +
@@ -207,7 +208,22 @@ function goalItemHTML(g) {
     '<div class="gp-actions">' +
       ic("done", false, "Mark done", '<path d="M20 6 9 17l-5-5"/>') + toToday +
       ic("del", true, "Delete", '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>') +
-    "</div></li>";
+    "</div>" +
+    '<span class="gp-hint">tap to flip</span>' +
+    "</div>";
+
+  // BACK face — details (defines the pill height)
+  const pct = g.deadline ? Math.round((g.done ? 1 : prog) * 100) + "% elapsed" : "";
+  const tail = g.deadline && !g.done && left > 0 ? " · " + fmtBig(left) + " left" : "";
+  const back = '<div class="gp gp-face gp-back ' + variant + '">' +
+    '<div class="gp-back-cat">' + (g.type === "long" ? "Long-term goal" : "Short-term goal") + "</div>" +
+    '<div class="gp-back-title">' + esc(g.title) + "</div>" +
+    (g.deadline ? '<div class="gp-back-row">started ' + esc(fmtWhen(g.createdAt)) + "</div>" : "") +
+    '<div class="gp-back-row">' + esc(g.deadline ? "due " + fmtWhen(g.deadline) : "no deadline") + "</div>" +
+    (pct ? '<div class="gp-back-row" style="color:var(--c)">' + esc(pct + tail) + "</div>" : "") +
+    "</div>";
+
+  return '<li class="gp-flip' + (g.done ? " is-done" : "") + '" style="--c:' + color + '"><div class="gp-flipper">' + back + front + "</div></li>";
 }
 
 function renderGoals(type) {
@@ -218,6 +234,8 @@ function renderGoals(type) {
   empty.style.display = items.length ? "none" : "";
   // sweep the rings in from empty to their target on the next frame
   requestAnimationFrame(() => list.querySelectorAll(".ring-fg").forEach((c) => { const o = c.getAttribute("data-offset"); if (o != null) c.style.strokeDashoffset = o; }));
+  // tap a pill to flip it (action-button clicks stopPropagation, so they don't flip)
+  list.querySelectorAll(".gp-flip").forEach((el) => el.addEventListener("click", () => el.classList.toggle("flipped")));
   list.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", (e) => {
     e.stopPropagation();
     const id = b.dataset.id;
