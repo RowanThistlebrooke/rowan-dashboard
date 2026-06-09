@@ -289,6 +289,47 @@ textarea.input { resize: vertical; min-height: 88px; line-height: 1.5; }
 .empty { font-family: var(--font-serif); font-style: italic; font-size: var(--text-lg); color: var(--muted); text-align: center; padding: var(--space-8) var(--space-4); border: 1px dashed var(--glass-border); border-radius: var(--radius-lg); }
 .section-label { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 
+/* ---------- Chat head + Input-data button ---------- */
+.chat__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.chat__name { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+.btn--sm { padding: .5rem var(--space-4); font-size: var(--text-xs); }
+
+/* ---------- Input-data modal ---------- */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: var(--space-5);
+  background: rgba(3,6,12,.6); backdrop-filter: blur(6px);
+  animation: fadeIn 200ms var(--ease) both;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  width: min(580px, 100%); max-height: 86vh; overflow-y: auto;
+  background: var(--glass-strong); backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border-strong); border-radius: var(--radius-lg);
+  box-shadow: var(--hairline), 0 30px 80px rgba(0,0,0,.6); padding: var(--space-6);
+  display: flex; flex-direction: column; gap: var(--space-4);
+  animation: panelIn 320ms var(--ease-premium) both;
+}
+.modal__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.modal__hint { font-size: var(--text-sm); color: var(--muted-strong); line-height: 1.5; }
+.dropzone {
+  border: 1.5px dashed var(--glass-border-strong); border-radius: var(--radius-md);
+  padding: var(--space-6); text-align: center; font-size: var(--text-sm); color: var(--muted-strong);
+  transition: border-color var(--duration) var(--ease), background var(--duration) var(--ease);
+}
+.dropzone.is-drag { border-color: var(--accent-2); background: rgba(45,212,191,.08); color: var(--fg); }
+.dropzone .files { display: block; margin-top: var(--space-2); font-family: var(--font-mono); font-size: var(--text-xs); color: var(--accent); }
+.linkbtn { background: none; border: none; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; padding: 0; }
+.modal__actions { display: flex; justify-content: flex-end; gap: var(--space-3); }
+.import-status { font-size: var(--text-sm); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); }
+.import-status.err { color: var(--red); background: rgba(251,113,133,.1); border: 1px solid rgba(251,113,133,.28); }
+.import-status.info { color: var(--muted-strong); }
+.import-preview { display: flex; flex-direction: column; gap: var(--space-4); }
+.imp-group__label { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: var(--space-2); }
+.imp-item { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); background: rgba(255,255,255,.03); margin-bottom: var(--space-2); }
+.imp-item .check { margin-top: 1px; }
+.imp-item .imp-text { flex: 1; font-size: var(--text-sm); }
+.imp-item .imp-when { display: block; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--accent); margin-top: 3px; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 640px) {
   .wrap { padding: var(--space-6) var(--space-4) var(--space-12); }

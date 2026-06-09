@@ -26,6 +26,10 @@
 
     <!-- ============ CHAT (expands from the greeter) ============ -->
     <section class="chat" id="chat" hidden aria-label="Assistant">
+      <div class="chat__head">
+        <span class="chat__name">Coach</span>
+        <button class="btn btn--ghost btn--sm" id="import-open" type="button">＋ Input data</button>
+      </div>
       <div class="chat__log" id="chat-log"></div>
       <div class="chat__chips" id="chat-chips"></div>
       <form class="chat__form" id="chat-form" autocomplete="off">
@@ -121,6 +125,34 @@
       <div class="empty" id="ideas-empty">Nothing jotted yet. Drop any idea above.</div>
     </section>
 
+  </div>
+
+  <!-- ============ INPUT DATA MODAL ============ -->
+  <div class="modal-overlay" id="import-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Input data">
+      <div class="modal__head">
+        <div>
+          <div class="card__eyebrow">Feed the coach</div>
+          <div class="card__title">Input data</div>
+        </div>
+        <button class="iconbtn" id="import-close" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <p class="modal__hint">Paste notes or a document — or drop a text file. The AI pulls out goals, schedule items, and ideas, and ignores the rest.</p>
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="import-file" accept=".txt,.md,.markdown,.csv,.json,.text,text/*" hidden multiple />
+        Drag a text file here, or <button type="button" class="linkbtn" id="import-browse">browse</button>
+        <span class="files" id="import-files"></span>
+      </div>
+      <textarea class="input" id="import-text" placeholder="…or paste your notes here" style="min-height:120px"></textarea>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" id="import-cancel" type="button">Cancel</button>
+        <button class="btn btn--primary" id="import-extract" type="button">Extract</button>
+      </div>
+      <div class="import-status" id="import-status" hidden></div>
+      <div class="import-preview" id="import-preview" hidden></div>
+    </div>
   </div>
 
   <script type="module" src="app.js"></script>

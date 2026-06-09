@@ -404,6 +404,113 @@ function tick() {
   renderHero();              // keeps the hero countdown + danger flash live
 }
 
+/* ============================================================
+   INPUT DATA — paste/drop notes → AI extracts goals/schedule/ideas
+   POSTs to /api/extract (structured outputs). On failure (no key /
+   offline) offers to save the raw text as a single idea so nothing
+   is lost.
+   ============================================================ */
+const importOverlay = $("import-overlay"), importText = $("import-text"), importStatus = $("import-status"), importPreview = $("import-preview"), importFilesEl = $("import-files");
+let importItems = [];
+
+function openImport() { importOverlay.hidden = false; resetImport(); importText.focus(); }
+function closeImport() { importOverlay.hidden = true; }
+function resetImport() { importText.value = ""; importFilesEl.textContent = ""; importStatus.hidden = true; importPreview.hidden = true; importPreview.innerHTML = ""; importItems = []; }
+
+$("import-open").addEventListener("click", openImport);
+$("import-close").addEventListener("click", closeImport);
+$("import-cancel").addEventListener("click", closeImport);
+importOverlay.addEventListener("click", (e) => { if (e.target === importOverlay) closeImport(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !importOverlay.hidden) closeImport(); });
+
+// file picking + drag/drop
+const dz = $("dropzone"), fileInput = $("import-file");
+$("import-browse").addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", () => readFiles(fileInput.files));
+["dragenter", "dragover"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add("is-drag"); }));
+["dragleave", "drop"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove("is-drag"); }));
+dz.addEventListener("drop", (e) => { if (e.dataTransfer && e.dataTransfer.files) readFiles(e.dataTransfer.files); });
+
+async function readFiles(fileList) {
+  const files = Array.from(fileList || []);
+  const names = [];
+  for (const f of files) {
+    const okType = /^text\//.test(f.type) || /\.(txt|md|markdown|csv|json|text)$/i.test(f.name);
+    if (!okType) { names.push(f.name + " (unsupported — paste its text)"); continue; }
+    try { const t = await f.text(); importText.value += (importText.value ? "\n\n" : "") + "# " + f.name + "\n" + t; names.push(f.name); }
+    catch (e) { names.push(f.name + " (couldn't read)"); }
+  }
+  importFilesEl.textContent = names.join(" · ");
+}
+
+function status(msg, cls) { importStatus.hidden = false; importStatus.className = "import-status " + (cls || "info"); importStatus.textContent = msg; }
+
+$("import-extract").addEventListener("click", async () => {
+  const text = importText.value.trim();
+  if (!text) { status("Paste some text or drop a file first.", "err"); return; }
+  status("Reading and extracting…", "info");
+  importPreview.hidden = true; importPreview.innerHTML = "";
+  try {
+    const r = await fetch("/api/extract", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || ("status " + r.status)); }
+    const data = await r.json();
+    buildPreview(data.extracted || {});
+  } catch (err) {
+    status("AI extraction unavailable (" + err.message + "). Is ANTHROPIC_API_KEY set on Vercel? You can still save the raw text as one idea.", "err");
+    showRawFallback(text);
+  }
+});
+
+function flatten(ex) {
+  const out = [];
+  (ex.long_term_goals || []).forEach((g) => out.push({ kind: "long", title: g.title, deadline: g.deadline || "" }));
+  (ex.short_term_goals || []).forEach((g) => out.push({ kind: "short", title: g.title, deadline: g.deadline || "" }));
+  (ex.schedule_today || []).forEach((s) => out.push({ kind: "daily", title: s.text }));
+  (ex.ideas || []).forEach((i) => out.push({ kind: "idea", title: i.text }));
+  return out;
+}
+const GROUPS = [["long", "Long-term goals"], ["short", "Short-term goals"], ["daily", "Today's schedule"], ["idea", "Ideas"]];
+
+function buildPreview(ex) {
+  importItems = flatten(ex);
+  if (!importItems.length) { status("Nothing actionable found in that text.", "info"); return; }
+  status("Found " + importItems.length + " item" + (importItems.length > 1 ? "s" : "") + ". Untick anything you don't want, then add.", "info");
+  let html = "";
+  GROUPS.forEach(([kind, label]) => {
+    const items = importItems.map((it, i) => [it, i]).filter(([it]) => it.kind === kind);
+    if (!items.length) return;
+    html += '<div class="imp-group"><div class="imp-group__label">' + label + "</div>";
+    items.forEach(([it, i]) => {
+      const when = it.deadline ? '<span class="imp-when">due ' + esc(fmtWhen(it.deadline)) + "</span>" : "";
+      html += '<label class="imp-item"><input class="check" type="checkbox" checked data-i="' + i + '" /><span class="imp-text">' + esc(it.title) + when + "</span></label>";
+    });
+    html += "</div>";
+  });
+  html += '<div class="modal__actions"><button class="btn btn--primary" id="import-add" type="button">Add selected</button></div>';
+  importPreview.innerHTML = html; importPreview.hidden = false;
+  $("import-add").addEventListener("click", addSelected);
+}
+
+function showRawFallback(text) {
+  importPreview.innerHTML = '<div class="modal__actions"><button class="btn btn--ghost" id="import-raw" type="button">Save as one idea</button></div>';
+  importPreview.hidden = false;
+  $("import-raw").addEventListener("click", () => { addIdea(text.slice(0, 1000)); closeImport(); });
+}
+
+function addSelected() {
+  const checks = importPreview.querySelectorAll('input.check:checked');
+  let n = 0;
+  checks.forEach((c) => {
+    const it = importItems[+c.dataset.i]; if (!it) return;
+    if (it.kind === "long" || it.kind === "short") addGoal(it.kind, it.title, it.deadline || null);
+    else if (it.kind === "daily") addDaily(it.title);
+    else if (it.kind === "idea") addIdea(it.title);
+    n++;
+  });
+  closeImport();
+  if (n) selectTab(checks[0] && importItems[+checks[0].dataset.i] && importItems[+checks[0].dataset.i].kind === "daily" ? "daily" : "long");
+}
+
 /* ---------- boot ---------- */
 window.addEventListener("resize", sizeTimers);
 loadLocal();
